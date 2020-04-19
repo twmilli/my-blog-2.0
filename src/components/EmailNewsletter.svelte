@@ -17,12 +17,13 @@
     border-radius: 2px;
     display: block;
     border: 1px solid #92a1b1;
+    display: inline-block;
   }
 
   #mc-embedded-subscribe:hover {
     cursor: pointer;
-    color: var(--brand-color-primary);
-    border-color: var(--brand-color-primary);
+    color: var(--brand-color-secondary);
+    border-color: var(--brand-color-secondary);
   }
 
   #email-input {
@@ -35,6 +36,7 @@
     border-radius: 2px;
     padding-right: 20%;
     border: 1px solid #92a1b1;
+    display: inline-block;
   }
 
   #email-input:focus {
@@ -57,23 +59,21 @@
   }
 </style>
 
-<div className="email-form-wrap">
-  <form
-    action="https://medium.us15.list-manage.com/subscribe/post?u=5c9abfe8a527c62bb03f94833&amp;id=504169905a"
-    method="POST"
-    noValidate>
-    <input
-      type="email"
-      name="EMAIL"
-      id="email-input"
-      placeholder="Email address"
-      autoCapitalize="off"
-      autoCorrect="off" />
-    <input
-      type="submit"
-      value="Subscribe"
-      name="subscribe"
-      id="mc-embedded-subscribe"
-      className="button" />
-  </form>
-</div>
+<form
+  action="https://medium.us15.list-manage.com/subscribe/post?u=5c9abfe8a527c62bb03f94833&amp;id=504169905a"
+  method="POST"
+  noValidate>
+  <input
+    type="email"
+    name="EMAIL"
+    id="email-input"
+    placeholder="Email address"
+    autoCapitalize="off"
+    autoCorrect="off" />
+  <input
+    type="submit"
+    value="Subscribe"
+    name="subscribe"
+    id="mc-embedded-subscribe"
+    class="button" />
+</form>

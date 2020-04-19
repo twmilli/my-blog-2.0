@@ -13,6 +13,7 @@
 
   .home-copy {
     flex: 1;
+    margin-right: 5em;
   }
 
   h1 {
@@ -26,8 +27,9 @@
   }
 
   img {
-    width: 300px;
-    height: 300px;
+    margin-top: 3em;
+    max-width: 300px;
+    max-height: 300px;
     border-radius: 50%;
   }
 
@@ -49,11 +51,13 @@
     .home-container {
       flex-direction: column;
       padding-bottom: 2em;
+      align-items: center;
     }
 
     .home-copy {
       flex: 0;
       text-align: center;
+      margin-right: 0;
     }
   }
 </style>
@@ -65,15 +69,24 @@
 <div class="home-container">
   <div class="home-copy">
     <h1>Hi, I'm Taylor.</h1>
-    <p>Currently, I'm a software engineer @ Thumbtack.</p>
-    <div class="blurb">
-      <span>Get my newsletter.</span>
+    <p>
+      Currently, I'm a software engineer @
+      <a href="https://thumbtack.com/">Thumbtack</a>
+    </p>
+    <p class="blurb">
+      <a href="https://taylor.substack.com/">Get my newsletter.</a>
       It features the absolute best of what I read each week, what I'm thinking
-      about, and what I'm working on. We go down rabbit holes and tangents in a
-      futile attempt to better understand the world.
-    </div>
-    <EmailNewsletter />
+      about, and what I'm working on.
+      <EmailNewsletter />
+    </p>
+    <blockquote>
+      "Taylor's newsletter is so good, I would read it even if I wasn't
+      obligated to."
+    </blockquote>
+    <p>- My mom</p>
   </div>
 
-  <img alt="Person typing on laptop" src="tay.jpg" />
+  <div>
+    <img alt="Person typing on laptop" src="tay.jpg" />
+  </div>
 </div>
