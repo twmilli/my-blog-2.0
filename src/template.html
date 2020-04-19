@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="theme-color" content="#333333" />
+
+    %sapper.base%
+
+    <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <!-- Sapper generates a <style> tag containing critical CSS
+	     for the current page. CSS for the rest of the app is
+	     lazily loaded when it precaches secondary pages -->
+    %sapper.styles%
+
+    <style>
+      html {
+        --line-length: 69ch;
+        --bg-color: #1d1f21;
+        --bg-color-semitransparent: rgba(33, 33, 33, 0.75);
+        --bg-color-secondary: #252526;
+        --text-color: #eeeeee;
+        --text-color-secondary: #818a91;
+        --link-color: #2cb67d;
+        --border-color: #2d2d2d;
+        --brand-color-primary: #ac5efa;
+        --brand-color-primary-offset: rgb(161, 84, 238);
+        --brand-color-secondary: #43a9a3;
+        --hover-color-primary: #6d1f21;
+        --hover-color-secondary: #1d1f61;
+        background-color: var(--bg-color);
+      }
+
+      body {
+        margin: 0;
+        font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+          "Segoe UI Symbol";
+        font-weight: 400;
+        font-size: 1.2rem;
+        color: var(--text-color);
+      }
+    </style>
+
+    <!-- This contains the contents of the <svelte:head> component, if
+	     the current page has one -->
+    %sapper.head%
+  </head>
+  <body>
+    <!-- The application will be rendered inside this element,
+	     because `app/client.js` references it -->
+    <div id="sapper">%sapper.html%</div>
+
+    <!-- Sapper creates a <script> tag containing `app/client.js`
+	     and anything else it needs to hydrate the app and
+	     initialise the router -->
+    %sapper.scripts%
+  </body>
+</html>
