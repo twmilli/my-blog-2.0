@@ -62,9 +62,7 @@
   }
 </style>
 
-<svelte:head>
-  <title>Taylor Milliman's Website</title>
-</svelte:head>
+
 
 <div class="home-container">
   <div class="home-copy">

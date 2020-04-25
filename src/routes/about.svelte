@@ -24,13 +24,34 @@
 <div class="container">
   <h1>About</h1>
   <figure>
-    <img src='rsz_florian-klauer-489-unsplash.jpg' alt='Image of a vintage typewriter.'>
-    <figcaption>Photo by <a href="https://unsplash.com/@florianklauer" target="_blank">Florian Klauer</a> on Unsplash</figcaption>
+    <img src="mushroom.jpg" alt="Taylor holding mushrooms" />
   </figure>
-  <p>Text placeholder via <a href="https://jeffsum.com/" target="_blank">Jeffsum</a>.</p>
-  <p>So you two dig up, dig up dinosaurs? What do they got in there? King Kong? My dad once told me, laugh and the world laughs with you, Cry, and I'll give you something to cry about you little bastard! Life finds a way. God creates dinosaurs. God destroys dinosaurs. God creates Man. Man destroys God. Man creates Dinosaurs.</p>
-  <p>You really think you can fly that thing? You know what? It is beets. I've crashed into a beet truck. Forget the fat lady! You're obsessed with the fat lady! Drive us out of here! Is this my espresso machine? Wh-what is-h-how did you get my espresso machine?</p>
-  <p>Hey, you know how I'm, like, always trying to save the planet? Here's my chance. Hey, take a look at the earthlings. Goodbye! I was part of something special. Just my luck, no ice. You're a very talented young man, with your own clever thoughts and ideas. Do you need a manager?</p>
-  <p>Jaguar shark! So tell me - does it really exist? This thing comes fully loaded. AM/FM radio, reclining bucket seats, and... power windows. Yes, Yes, without the oops! You're a very talented young man, with your own clever thoughts and ideas. Do you need a manager?</p>
-  <p>Yes, Yes, without the oops! Do you have any idea how long it takes those cups to decompose. They're using our own satellites against us. And the clock is ticking. Do you have any idea how long it takes those cups to decompose. My dad once told me, laugh and the world laughs with you, Cry, and I'll give you something to cry about you little bastard!</p>
+  <p>
+    When I graduated from highschool, I was 17 and had no idea what I wanted to
+    do with my life. So I took a gap year. A year later, I still had no idea
+    what I wanted to do.
+  </p>
+  <p>
+    So... I went to college (@ Bucknell). Ended up majoring in Chemical
+    Engineering, falling in love with computer science along the way, and
+    eventually breaking into the industry with an internship at Braintree. It's
+    a long story, I wrote all about it
+    <a
+      href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48">
+      here.
+    </a>
+  </p>
+  <p>
+    Recently, I've been working on the targeting team at
+    <a href="https://www.thumbtack.com/">Thumbtack</a>
+    . We build tools to help service professionals on our platform get the jobs
+    that they want.
+  </p>
+  <p />
+  <p>
+    I have no idea what the next few years will bring, but I hope to stay
+    passionate about whatever I'm working on, and hopefully make the world just
+    a little bit better in the process. If you want to contact me, feel free to
+    email me at twm013@bucknell.edu.
+  </p>
 </div>

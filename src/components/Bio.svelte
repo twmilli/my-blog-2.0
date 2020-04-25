@@ -19,11 +19,17 @@
 </style>
 
 <div>
-  <img src="profile-pic.png" alt="Maxi Ferreira">
+  <img src="tay.jpg" alt="Maxi Ferreira" />
   <p>
-    Hi, I'm <strong>Maxi</strong>. I'm a software engineer and data scientist from Córdoba, Argentina.
-    You can follow me on <a href="https://www.twitter.com/Charca" target="_blank">Twitter</a>,
-    see some of my work on <a href="https://www.github.com/Charca" target="_blank">GitHub</a>,
-    or read more about me on <a href="https://www.maxiferreira.com" target="_blank">my website</a>.
+    Hi, I'm
+    <strong>Taylor</strong>
+    . I'm a software engineer/maker/amateur chef currently living in San
+    Francisco. You can follow me on
+    <a href="https://twitter.com/TayTayTrey" target="_blank">Twitter</a>
+    , see some of my work on
+    <a href="https://github.com/twmilli" target="_blank">GitHub</a>
+    , or read about my life on
+    <a href="https://taylor.substack.com/" target="_blank">Substack</a>
+    .
   </p>
 </div>
