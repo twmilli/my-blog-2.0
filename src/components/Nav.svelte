@@ -48,7 +48,7 @@
     flex: 1;
   }
 
-  a {
+  .nav-link {
     color: inherit;
     text-decoration: none;
     padding: 10px 5px;
@@ -57,11 +57,11 @@
     margin-left: 20px;
   }
 
-  a:not(.selected) {
+  .nav-link:not(.selected) {
     opacity: 0.7;
   }
 
-  a::before {
+  .nav-link::before {
     content: "";
     position: absolute;
     transition: transform 0.3s ease;
@@ -73,13 +73,17 @@
     transform: scaleX(0);
   }
 
-  a:hover::before,
+  .nav-link:hover::before,
   .selected::before {
     transform: scaleX(1);
   }
 
   .selected::before {
     background: #fd6378;
+  }
+
+  .search {
+    padding-left: 20px;
   }
 </style>
 
@@ -90,13 +94,33 @@
       alt="dark mode toggle"
       on:click={toggleTheme} />
   </div>
+  <div>
+    <a href="search" class="search">
+      <img
+        src={$themeStore.name === 'default' ? 'search-dark.svg' : 'search-light.svg'}
+        alt="search icon" />
+    </a>
+  </div>
   <div class="links">
-    <a class={segment === undefined ? 'selected' : ''} href=".">home</a>
-    <a class={segment === 'about' ? 'selected' : ''} href="about">about</a>
-    <a rel="prefetch" class={segment === 'blog' ? 'selected' : ''} href="blog">
+    <a
+      class={segment === undefined ? 'selected nav-link' : 'nav-link'}
+      href=".">
+      home
+    </a>
+    <a
+      class={segment === 'about' ? 'selected nav-link' : 'nav-link'}
+      href="about">
+      about
+    </a>
+    <a
+      rel="prefetch"
+      class={segment === 'blog' ? 'selected nav-link' : 'nav-link'}
+      href="blog">
       blog
     </a>
-    <a class={segment === 'reading' ? 'selected' : ''} href="reading">
+    <a
+      class={segment === 'reading' ? 'selected nav-link' : 'nav-link'}
+      href="reading">
       reading
     </a>
   </div>
