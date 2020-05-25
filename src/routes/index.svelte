@@ -62,14 +62,12 @@
   }
 </style>
 
-
-
 <div class="home-container">
   <div class="home-copy">
     <h1>Hi, I'm Taylor.</h1>
     <p>
       Currently, I'm a software engineer @
-      <a href="https://thumbtack.com/">Thumbtack</a>
+      <a href="https://www.assembled.com/" target="_blank">Assembled</a>
     </p>
     <p class="blurb">
       <a href="https://taylor.substack.com/">Get my newsletter.</a>
