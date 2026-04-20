@@ -80,7 +80,7 @@
 
   .item {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     gap: 1.25rem;
     padding: 1rem 0.25rem;
     border-bottom: 1px solid var(--border);
@@ -134,32 +134,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .rating {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.4rem;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-size: 0.8rem;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-  }
-
-  .rating.hi {
-    background: var(--accent-soft);
-    border-color: transparent;
-    color: var(--accent);
-    font-weight: 600;
-  }
-
   @media (max-width: 560px) {
-    .item {
-      grid-template-columns: 1fr auto;
-    }
     .when {
       grid-column: 1 / 2;
       margin-top: 0.25rem;
@@ -189,7 +164,6 @@
           <span class="author">{book.author}</span>
         </div>
         <span class="when">{toDateString(book.date)}</span>
-        <span class="rating" class:hi={book.rating >= 9}>{book.rating}/10</span>
       </li>
     {/each}
   </ul>

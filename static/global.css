@@ -8,10 +8,11 @@
 :root {
   --line-length: 68ch;
 
-  /* Typography */
-  --font-sans: "Rubik", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Helvetica, Arial, sans-serif;
-  --font-serif: "Merriweather", ui-serif, Georgia, "Times New Roman", serif;
+  /* Typography — single-serif look inspired by danielwyb.com
+     (Source Serif 4 is the closest open-source match to Poynter Oldstyle Text) */
+  --font-serif: "Source Serif 4", "Source Serif Pro", ui-serif, Georgia,
+    "Times New Roman", serif;
+  --font-sans: var(--font-serif);
   --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 
   /* Motion */
@@ -33,67 +34,190 @@
   color-scheme: light;
 }
 
-/* Light (default) */
+/* ---------------------------------------------------------------
+   Shared green accent — deep pine / evergreen.
+   Intentionally more saturated and cooler than the old washed-out
+   sage (#7ea06b) so it reads as a confident green, not a beige-green.
+   --------------------------------------------------------------- */
+
+/* ---------- Light — Crisp (default, pure white) ----------
+   Flat aesthetic: borders do the work, shadows nearly absent. */
 :root,
-:root[data-theme="light"] {
-  --bg: #efe9df;
-  --bg-tint: #e7e0d2;
+:root[data-theme="light"],
+:root[data-theme="light-crisp"] {
+  --bg: #ffffff;
+  --bg-tint: #f5f6f8;
   --surface: #ffffff;
-  --surface-2: #f6f1e9;
-  --surface-glass: rgba(255, 255, 255, 0.55);
-  --surface-glass-border: rgba(255, 255, 255, 0.7);
+  --surface-2: #f3f4f6;
+  --surface-glass: rgba(255, 255, 255, 0.75);
+  --surface-glass-border: rgba(15, 17, 19, 0.09);
 
-  --text: #17130e;
-  --text-muted: #6a6057;
-  --text-faint: #9a9083;
+  --text: #0a0c0e;
+  --text-muted: #4d5159;
+  --text-faint: #868991;
 
-  --accent: #7ea06b; /* light forest green */
-  --accent-ink: #0f1a0a; /* deep forest for legible text on accent */
-  --accent-soft: #dce7d3; /* pale sage tint */
+  --accent: #1f5a40;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4ede7;
 
-  --border: rgba(22, 19, 14, 0.08);
-  --border-strong: rgba(22, 19, 14, 0.16);
+  --border: rgba(15, 17, 19, 0.1);
+  --border-strong: rgba(15, 17, 19, 0.18);
 
-  --shadow-sm: 0 1px 2px rgba(22, 19, 14, 0.04),
-    0 2px 6px rgba(22, 19, 14, 0.04);
-  --shadow-md: 0 4px 12px rgba(22, 19, 14, 0.06),
-    0 10px 30px rgba(22, 19, 14, 0.06);
-  --shadow-lg: 0 10px 30px rgba(22, 19, 14, 0.08),
-    0 30px 80px rgba(22, 19, 14, 0.1);
+  --shadow-sm: 0 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-md: 0 1px 0 rgba(15, 17, 19, 0.03);
+  --shadow-lg: 0 2px 0 rgba(15, 17, 19, 0.04),
+    0 12px 28px rgba(15, 17, 19, 0.06);
 
   /* Legacy token compatibility */
   --bg-color: var(--bg);
   --text-color: var(--text);
   --link-color: var(--accent);
   --brand-color-primary: var(--accent);
-  --brand-color-secondary: #3b6b6a;
-  --hover-color-primary: #4f6b46;
-  --hover-color-secondary: #2a4948;
-  --bg-color-semitransparent: rgba(239, 233, 223, 0.75);
+  --brand-color-secondary: #2a5b6a;
+  --hover-color-primary: #143f2d;
+  --hover-color-secondary: #1b3f49;
+  --bg-color-semitransparent: rgba(255, 255, 255, 0.75);
   --bg-color-secondary: var(--surface-2);
   --text-color-secondary: var(--text-muted);
   --border-color: var(--border);
-  --brand-color-primary-offset: #bdd6ae;
+  --brand-color-primary-offset: #cfdfd5;
 }
 
-/* Dark */
+/* ---------- Light — Warm (paper white) ---------- */
+:root[data-theme="light-warm"] {
+  --bg: #fbf9f5;
+  --bg-tint: #f4f0e7;
+  --surface: #ffffff;
+  --surface-2: #f2eee4;
+  --surface-glass: rgba(255, 253, 248, 0.75);
+  --surface-glass-border: rgba(26, 23, 19, 0.09);
+
+  --text: #120f0b;
+  --text-muted: #5c554c;
+  --text-faint: #938b80;
+
+  --accent: #22593d;
+  --accent-ink: #ffffff;
+  --accent-soft: #e9ece2;
+
+  --border: rgba(26, 23, 19, 0.1);
+  --border-strong: rgba(26, 23, 19, 0.2);
+
+  --shadow-sm: 0 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-md: 0 1px 0 rgba(26, 23, 19, 0.03);
+  --shadow-lg: 0 2px 0 rgba(26, 23, 19, 0.04),
+    0 12px 28px rgba(26, 23, 19, 0.06);
+
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --link-color: var(--accent);
+  --brand-color-primary: var(--accent);
+  --brand-color-secondary: #3b5b6a;
+  --hover-color-primary: #16402b;
+  --hover-color-secondary: #223f49;
+  --bg-color-semitransparent: rgba(251, 249, 245, 0.78);
+  --bg-color-secondary: var(--surface-2);
+  --text-color-secondary: var(--text-muted);
+  --border-color: var(--border);
+  --brand-color-primary-offset: #d1ddd1;
+}
+
+/* ---------- Light — Cool (snow white) ---------- */
+:root[data-theme="light-cool"] {
+  --bg: #f9fafb;
+  --bg-tint: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --surface-glass: rgba(249, 250, 251, 0.75);
+  --surface-glass-border: rgba(13, 18, 26, 0.09);
+
+  --text: #070a0f;
+  --text-muted: #4a525c;
+  --text-faint: #858c97;
+
+  --accent: #155c45;
+  --accent-ink: #ffffff;
+  --accent-soft: #dfeae4;
+
+  --border: rgba(13, 18, 26, 0.1);
+  --border-strong: rgba(13, 18, 26, 0.18);
+
+  --shadow-sm: 0 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-md: 0 1px 0 rgba(13, 18, 26, 0.03);
+  --shadow-lg: 0 2px 0 rgba(13, 18, 26, 0.05),
+    0 12px 28px rgba(13, 18, 26, 0.07);
+
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --link-color: var(--accent);
+  --brand-color-primary: var(--accent);
+  --brand-color-secondary: #24566c;
+  --hover-color-primary: #0c4030;
+  --hover-color-secondary: #133d4b;
+  --bg-color-semitransparent: rgba(248, 250, 252, 0.78);
+  --bg-color-secondary: var(--surface-2);
+  --text-color-secondary: var(--text-muted);
+  --border-color: var(--border);
+  --brand-color-primary-offset: #c6dcd2;
+}
+
+/* ---------- Light — Lavender (very light purple) ---------- */
+:root[data-theme="light-lavender"] {
+  --bg: #fcfaff;
+  --bg-tint: #f4f0fb;
+  --surface: #ffffff;
+  --surface-2: #f3eef9;
+  --surface-glass: rgba(252, 250, 255, 0.78);
+  --surface-glass-border: rgba(26, 20, 40, 0.08);
+
+  --text: #0d0a17;
+  --text-muted: #56516a;
+  --text-faint: #908aa2;
+
+  --accent: #2f6a48;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7efe6;
+
+  --border: rgba(26, 20, 40, 0.09);
+  --border-strong: rgba(26, 20, 40, 0.18);
+
+  --shadow-sm: 0 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-md: 0 1px 0 rgba(26, 20, 40, 0.03);
+  --shadow-lg: 0 2px 0 rgba(26, 20, 40, 0.05),
+    0 12px 28px rgba(26, 20, 40, 0.07);
+
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --link-color: var(--accent);
+  --brand-color-primary: var(--accent);
+  --brand-color-secondary: #5a4c7a;
+  --hover-color-primary: #1f4b33;
+  --hover-color-secondary: #3e3358;
+  --bg-color-semitransparent: rgba(252, 250, 255, 0.8);
+  --bg-color-secondary: var(--surface-2);
+  --text-color-secondary: var(--text-muted);
+  --border-color: var(--border);
+  --brand-color-primary-offset: #d2e0d4;
+}
+
+/* ---------- Dark — new emerald (no more pale sage) ---------- */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #100f11;
-  --bg-tint: #17161a;
-  --surface: #1a191d;
-  --surface-2: #222126;
-  --surface-glass: rgba(26, 25, 29, 0.55);
+  --bg: #0f1012;
+  --bg-tint: #17181b;
+  --surface: #1a1b1e;
+  --surface-2: #222327;
+  --surface-glass: rgba(26, 27, 30, 0.55);
   --surface-glass-border: rgba(255, 255, 255, 0.08);
 
   --text: #efece5;
   --text-muted: #958d84;
   --text-faint: #625c55;
 
-  --accent: #a8c69a; /* soft sage for dark backgrounds */
-  --accent-ink: #0c140a; /* deep forest ink on accent */
-  --accent-soft: #23311b; /* deep mossy tint */
+  --accent: #1f5a40;       /* deep pine — matches light mode */
+  --accent-ink: #ffffff;   /* white ink on deep pine */
+  --accent-soft: #153a2a;  /* deep mossy emerald tint */
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -109,13 +233,13 @@
   --link-color: var(--accent);
   --brand-color-primary: var(--accent);
   --brand-color-secondary: #7fb6b0;
-  --hover-color-primary: #2a3a1f;
+  --hover-color-primary: #2a4a36;
   --hover-color-secondary: #1e3b3a;
-  --bg-color-semitransparent: rgba(16, 15, 17, 0.72);
+  --bg-color-semitransparent: rgba(15, 16, 18, 0.72);
   --bg-color-secondary: var(--surface-2);
   --text-color-secondary: var(--text-muted);
   --border-color: var(--border);
-  --brand-color-primary-offset: #c9e0ba;
+  --brand-color-primary-offset: #8fd6b6;
 }
 
 html,
@@ -144,10 +268,10 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-sans);
+  font-family: var(--font-serif);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: -0.005em;
+  line-height: 1.15;
   margin: 0 0 0.5em 0;
 }
 
@@ -155,8 +279,8 @@ h1 {
   font-family: var(--font-serif);
   font-weight: 700;
   font-size: clamp(2.5rem, 5vw, 4rem);
-  letter-spacing: -0.025em;
-  line-height: 1.05;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   margin: 0 0 0.6em 0;
 }
 

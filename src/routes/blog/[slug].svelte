@@ -12,7 +12,6 @@
 </script>
 
 <script>
-  import Bio from "../../components/Bio.svelte";
   export let post;
 </script>
 
@@ -107,12 +106,6 @@
     background-size: 100% 100%;
     color: var(--accent-ink);
   }
-
-  hr {
-    border: 0;
-    border-top: 1px solid var(--border);
-    margin: 3rem 0 2rem;
-  }
 </style>
 
 <svelte:head>
@@ -128,6 +121,4 @@
   <article class="content">
     {@html post.html}
   </article>
-  <hr />
-  <Bio />
 </div>

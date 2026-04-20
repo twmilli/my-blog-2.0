@@ -17,34 +17,6 @@
     text-decoration: none;
     overflow: hidden;
     position: relative;
-    transition: transform var(--dur-3) var(--ease-out-soft),
-      box-shadow var(--dur-3) var(--ease-out-soft),
-      border-color var(--dur-2) var(--ease-out-soft);
-  }
-
-  .post-card::after {
-    /* soft radial sheen */
-    content: "";
-    position: absolute;
-    inset: -1px;
-    background: radial-gradient(
-      600px 200px at 100% 0%,
-      var(--accent-soft) 0%,
-      transparent 60%
-    );
-    opacity: 0;
-    transition: opacity var(--dur-3) var(--ease-out-soft);
-    pointer-events: none;
-  }
-
-  .post-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--border-strong);
-  }
-
-  .post-card:hover::after {
-    opacity: 0.45;
   }
 
   .meta {

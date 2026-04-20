@@ -18,8 +18,6 @@
 
   // idle | playing | crashed
   let state = "idle";
-  let distance = 0;
-  let best = 0;
   let lastTrick = "";
   let trickTimer = 0;
 
@@ -68,7 +66,6 @@
       pitchDir: 0,
     };
     worldY = 0;
-    distance = 0;
     features = [];
     nextFeatureY = 220;
     trail = [];
@@ -316,9 +313,6 @@
       if (skier.heading > -0.2) skier.heading = Math.max(-0.2, skier.heading - 4 * dt);
       skier.speed = Math.max(skier.speed, 35);
     }
-
-    distance = Math.round(worldY / 6);
-    if (distance > best) best = distance;
 
     spawnFeatures();
     maintainWallSpikes();
@@ -986,9 +980,6 @@
       '600 14px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(`${distance} ft`, 14, 12);
-    ctx.textAlign = "right";
-    ctx.fillText(`best ${best} ft`, W - 14, 12);
     ctx.restore();
 
     if (skier && skier.inAir) {

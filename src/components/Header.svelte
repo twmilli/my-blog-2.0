@@ -6,16 +6,9 @@
 
 <style>
   header {
-    position: sticky;
-    top: 0;
-    z-index: 40;
     width: 100%;
     padding: 0.85rem 1.25rem;
-    background: var(--bg-color-semitransparent);
-    backdrop-filter: saturate(140%) blur(14px);
-    -webkit-backdrop-filter: saturate(140%) blur(14px);
-    border-bottom: 1px solid transparent;
-    transition: border-color var(--dur-2) var(--ease-out-soft);
+    background: transparent;
   }
 
   .inner {
