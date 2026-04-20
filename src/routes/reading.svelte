@@ -50,9 +50,25 @@
     max-width: 52ch;
   }
 
-  .sub a {
+  .sub a[href^="http"] {
     color: var(--text);
-    border-bottom: 1px solid var(--accent);
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    background-position: 0 100%;
+    padding: 0.12em 0.05em 0.04em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
+    text-decoration: none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size var(--dur-3) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
+  }
+
+  .sub a[href^="http"]:hover {
+    background-size: 100% 100%;
+    color: var(--accent-ink);
   }
 
   .list {
@@ -89,13 +105,20 @@
     text-decoration: none;
     background-image: linear-gradient(var(--accent), var(--accent));
     background-repeat: no-repeat;
-    background-size: 0 1px;
+    background-size: 100% 1px;
     background-position: 0 100%;
-    transition: background-size var(--dur-2) var(--ease-out-soft);
+    padding: 0.12em 0.05em 0.04em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size var(--dur-3) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
   }
 
   .title a:hover {
-    background-size: 100% 1px;
+    background-size: 100% 100%;
+    color: var(--accent-ink);
   }
 
   .author {

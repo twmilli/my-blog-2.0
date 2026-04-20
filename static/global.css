@@ -47,9 +47,9 @@
   --text-muted: #6a6057;
   --text-faint: #9a9083;
 
-  --accent: #b44a2c; /* terracotta */
-  --accent-ink: #ffffff;
-  --accent-soft: #f2d8cc;
+  --accent: #7ea06b; /* light forest green */
+  --accent-ink: #0f1a0a; /* deep forest for legible text on accent */
+  --accent-soft: #dce7d3; /* pale sage tint */
 
   --border: rgba(22, 19, 14, 0.08);
   --border-strong: rgba(22, 19, 14, 0.16);
@@ -67,13 +67,13 @@
   --link-color: var(--accent);
   --brand-color-primary: var(--accent);
   --brand-color-secondary: #3b6b6a;
-  --hover-color-primary: #7a2f1c;
+  --hover-color-primary: #4f6b46;
   --hover-color-secondary: #2a4948;
   --bg-color-semitransparent: rgba(239, 233, 223, 0.75);
   --bg-color-secondary: var(--surface-2);
   --text-color-secondary: var(--text-muted);
   --border-color: var(--border);
-  --brand-color-primary-offset: #e8a893;
+  --brand-color-primary-offset: #bdd6ae;
 }
 
 /* Dark */
@@ -91,9 +91,9 @@
   --text-muted: #958d84;
   --text-faint: #625c55;
 
-  --accent: #e39275; /* warm apricot */
-  --accent-ink: #160d08;
-  --accent-soft: #3b2419;
+  --accent: #a8c69a; /* soft sage for dark backgrounds */
+  --accent-ink: #0c140a; /* deep forest ink on accent */
+  --accent-soft: #23311b; /* deep mossy tint */
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -109,13 +109,13 @@
   --link-color: var(--accent);
   --brand-color-primary: var(--accent);
   --brand-color-secondary: #7fb6b0;
-  --hover-color-primary: #4a2a1c;
+  --hover-color-primary: #2a3a1f;
   --hover-color-secondary: #1e3b3a;
   --bg-color-semitransparent: rgba(16, 15, 17, 0.72);
   --bg-color-secondary: var(--surface-2);
   --text-color-secondary: var(--text-muted);
   --border-color: var(--border);
-  --brand-color-primary-offset: #f0b79b;
+  --brand-color-primary-offset: #c9e0ba;
 }
 
 html,
@@ -194,27 +194,36 @@ a:hover {
   color: var(--accent);
 }
 
-/* Inline prose links get a subtle underline that thickens on hover */
-.prose a,
-article a,
-.container p a,
-blockquote a {
+/* External inline prose links: subtle underline at rest,
+   expands to fully cover the text on hover. Internal links
+   (relative hrefs) are intentionally left plain. */
+.prose a[href^="http"],
+article a[href^="http"],
+.container p a[href^="http"],
+blockquote a[href^="http"] {
   color: var(--text);
   background-image: linear-gradient(var(--accent), var(--accent));
   background-repeat: no-repeat;
   background-size: 100% 1px;
   background-position: 0 100%;
+  /* Vertical padding expands the inline background-painting area so
+     100%×100% on hover actually covers ascenders + descenders. */
+  padding: 0.12em 0.05em 0.04em;
+  margin: 0 -0.05em;
+  border-radius: 2px;
   transition: background-size var(--dur-3) var(--ease-out-soft),
     color var(--dur-2) var(--ease-out-soft);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   box-shadow: none;
 }
 
-.prose a:hover,
-article a:hover,
-.container p a:hover,
-blockquote a:hover {
-  background-size: 100% 8px;
-  color: var(--text);
+.prose a[href^="http"]:hover,
+article a[href^="http"]:hover,
+.container p a[href^="http"]:hover,
+blockquote a[href^="http"]:hover {
+  background-size: 100% 100%;
+  color: var(--accent-ink);
 }
 
 img {

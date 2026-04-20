@@ -1,11 +1,76 @@
 <script>
   import { onMount, onDestroy } from "svelte";
+  import { cubicOut, backOut, backIn } from "svelte/easing";
   import { themeStore } from "../theme.js";
 
   export let segment;
 
   let contactOpen = false;
   let contactRef;
+
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function menuIn(node, { duration = 260 } = {}) {
+    if (prefersReducedMotion()) {
+      return { duration: 120, css: (t) => `opacity: ${t};` };
+    }
+    return {
+      duration,
+      easing: backOut,
+      css: (t) => `
+        opacity: ${Math.min(1, t * 1.4)};
+        transform: translateY(${(1 - t) * -6}px) scale(${0.94 + t * 0.06});
+      `,
+    };
+  }
+
+  function menuOut(node, { duration = 180, delay = 0 } = {}) {
+    if (prefersReducedMotion()) {
+      return { duration: 100, css: (t) => `opacity: ${t};` };
+    }
+    return {
+      delay,
+      duration,
+      easing: backIn,
+      css: (t) => `
+        opacity: ${Math.min(1, t * 1.6)};
+        transform: translateY(${(1 - t) * -4}px) scale(${0.92 + t * 0.08});
+      `,
+    };
+  }
+
+  function menuItem(node, { delay = 0, duration = 260 } = {}) {
+    if (prefersReducedMotion()) {
+      return { duration: 0, css: () => "" };
+    }
+    return {
+      delay,
+      duration,
+      easing: backOut,
+      css: (t) => `
+        opacity: ${t};
+        transform: translateY(${(1 - t) * 6}px);
+      `,
+    };
+  }
+
+  function menuItemOut(node, { delay = 0, duration = 140 } = {}) {
+    if (prefersReducedMotion()) {
+      return { duration: 0, css: () => "" };
+    }
+    return {
+      delay,
+      duration,
+      easing: backIn,
+      css: (t) => `
+        opacity: ${t};
+        transform: translateY(${(1 - t) * -4}px) scale(${0.96 + t * 0.04});
+      `,
+    };
+  }
 
   const toggleTheme = () => {
     themeStore.set({
@@ -87,9 +152,15 @@
     border-right: 1.5px solid currentColor;
     border-bottom: 1.5px solid currentColor;
     transform: rotate(45deg) translate(-2px, -2px);
-    transition: transform var(--dur-2) var(--ease-out-soft);
+    transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
     opacity: 0.6;
     margin-left: 0.15rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret {
+      transition: transform var(--dur-1) linear;
+    }
   }
 
   .contact-wrap.open .caret {
@@ -114,18 +185,7 @@
     flex-direction: column;
     z-index: 50;
     transform-origin: top right;
-    animation: menu-in var(--dur-2) var(--ease-out-soft) both;
-  }
-
-  @keyframes menu-in {
-    from {
-      opacity: 0;
-      transform: scale(0.98) translateY(-2px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
+    will-change: transform, opacity;
   }
 
   .contact-menu a {
@@ -168,7 +228,7 @@
 
 <nav aria-label="Primary">
   <div class="cluster">
-    <a class="pill brand" href=".">Taylor M.</a>
+    <a class="pill brand" href=".">Taylor Milliman</a>
   </div>
 
   <div class="cluster">
@@ -213,30 +273,53 @@
       </button>
 
       {#if contactOpen}
-        <div class="contact-menu" role="menu">
-          <a href="mailto:twm013@bucknell.edu" role="menuitem">
+        <div
+          class="contact-menu"
+          role="menu"
+          in:menuIn
+          out:menuOut={{ delay: 70, duration: 170 }}>
+          <a
+            href="mailto:twm013@bucknell.edu"
+            role="menuitem"
+            in:menuItem={{ delay: 80, duration: 280 }}
+            out:menuItemOut={{ delay: 60, duration: 120 }}>
             <span>Email</span><span class="meta">→</span>
           </a>
           <a
             href="https://twitter.com/TayTayTrey"
             target="_blank"
             rel="noopener noreferrer"
-            role="menuitem">
+            role="menuitem"
+            in:menuItem={{ delay: 115, duration: 280 }}
+            out:menuItemOut={{ delay: 40, duration: 120 }}>
             <span>Twitter</span><span class="meta">↗</span>
           </a>
           <a
             href="https://github.com/twmilli"
             target="_blank"
             rel="noopener noreferrer"
-            role="menuitem">
+            role="menuitem"
+            in:menuItem={{ delay: 150, duration: 280 }}
+            out:menuItemOut={{ delay: 20, duration: 120 }}>
             <span>GitHub</span><span class="meta">↗</span>
           </a>
           <a
             href="https://taylor.substack.com/"
             target="_blank"
             rel="noopener noreferrer"
-            role="menuitem">
+            role="menuitem"
+            in:menuItem={{ delay: 185, duration: 280 }}
+            out:menuItemOut={{ delay: 20, duration: 120 }}>
             <span>Substack</span><span class="meta">↗</span>
+          </a>
+          <a
+            href="https://www.linkedin.com/in/taylor-milliman/"
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            in:menuItem={{ delay: 220, duration: 280 }}
+            out:menuItemOut={{ delay: 0, duration: 120 }}>
+            <span>LinkedIn</span><span class="meta">↗</span>
           </a>
         </div>
       {/if}

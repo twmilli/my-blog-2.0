@@ -1,0 +1,13 @@
+{
+  "name": "tay-location-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Overland ingest + read endpoint for Taylor's blog location display",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}

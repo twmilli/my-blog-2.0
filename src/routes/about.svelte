@@ -1,3 +1,6 @@
+<script>
+</script>
+
 <style>
   .about-wrap {
     max-width: 56rem;
@@ -41,6 +44,27 @@
     line-height: 1.7;
   }
 
+  .prose a[href^="http"] {
+    color: var(--text);
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    background-position: 0 100%;
+    padding: 0.12em 0.05em 0.04em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
+    text-decoration: none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size var(--dur-3) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
+  }
+
+  .prose a[href^="http"]:hover {
+    background-size: 100% 100%;
+    color: var(--accent-ink);
+  }
+
   .portrait {
     border-radius: var(--radius-xl);
     overflow: hidden;
@@ -56,38 +80,6 @@
     object-fit: cover;
   }
 
-  .fact-list {
-    list-style: none;
-    padding: 0;
-    margin: 1.5rem 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
-    color: var(--text-muted);
-  }
-
-  .fact-list li {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px dashed var(--border);
-    margin: 0;
-  }
-
-  .fact-list li span:first-child {
-    color: var(--text-faint);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-  }
-
-  .fact-list li span:last-child {
-    color: var(--text);
-    font-weight: 500;
-  }
 </style>
 
 <svelte:head>
@@ -101,23 +93,20 @@
   <div class="layout">
     <div class="prose">
       <p>
-        I'm a software engineer, maker, and amateur chef living in San
+        I'm a software engineer, maker, climber, and life enjoyer in San
         Francisco. These days I'm working on
-        <a href="https://www.figma.com/" target="_blank" rel="noopener noreferrer">AI at Figma</a>
-        — building the tools that help designers and engineers
+        <a href="https://www.figma.com/" target="_blank" rel="noopener noreferrer">AI at Figma</a>, building tools that help designers and engineers
         collaborate with models.
       </p>
       <p>
-        I went to Bucknell, where I majored in Chemical Engineering but fell
-        hard for computer science along the way. I broke into the industry
-        with an internship at Braintree — there's a
+        I studied Chemical Engineering formally but fell in love with making things on computers along the way. I wrote about learning to code and becoming a software engineer
         <a
           href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48"
           target="_blank"
           rel="noopener noreferrer">
-          long story
+          along the way.
         </a>
-        about how that happened.
+
       </p>
       <p>
         Before Figma I worked at Assembled and Thumbtack. Between jobs I
@@ -125,23 +114,12 @@
         one in my twenties to cook, climb, and camp through places I
         hadn't been.
       </p>
-      <p>
-        I hope to stay curious and make the world a little better along
-        the way. If that sounds like fun, say hi — twm013 at bucknell
-        dot edu.
-      </p>
     </div>
 
     <aside>
       <figure class="portrait">
         <img src="mushroom.jpg" alt="Taylor holding mushrooms" />
       </figure>
-      <ul class="fact-list">
-        <li><span>Based in</span><span>San Francisco</span></li>
-        <li><span>Currently</span><span>AI @ Figma</span></li>
-        <li><span>Previously</span><span>Assembled, Thumbtack</span></li>
-        <li><span>School</span><span>Bucknell '17</span></li>
-      </ul>
     </aside>
   </div>
 </div>

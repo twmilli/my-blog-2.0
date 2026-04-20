@@ -102,7 +102,7 @@
           y: nextFeatureY,
           w: rand(60, 90),
           rampLen: rand(34, 48),
-          power: rand(85, 130),
+          power: rand(150, 220),
         });
         nextFeatureY += rand(180, 280);
       } else if (roll < 0.38) {
@@ -200,9 +200,11 @@
 
     if (skier.inAir) {
       // ---- AIR ----------------------------------------------------------
-      // Yaw (ring indicator, body does NOT rotate).
-      skier.yawSpeed += steer * 620 * dt;
-      skier.yawSpeed = clamp(skier.yawSpeed, -680, 680);
+      // Yaw — rotates the body in-plane (i.e. a 360 spin). Accel + max
+      // speed are doubled from the original tuning so left/right taps
+      // spin the skier about twice as fast.
+      skier.yawSpeed += steer * 1240 * dt;
+      skier.yawSpeed = clamp(skier.yawSpeed, -1360, 1360);
       skier.yawSpeed *= Math.pow(0.985, dt * 60);
       skier.yawDeg += skier.yawSpeed * dt;
       skier.yawSpun += Math.abs(skier.yawSpeed) * dt;
@@ -891,51 +893,21 @@
       ctx.restore();
     }
 
-    // Spin ring — THE visual feedback for yaw rotation. Body itself no longer
-    // tumbles.
-    if (skier.inAir && Math.abs(skier.yawSpeed) > 20) {
-      const ringR = 15;
-      ctx.save();
-      ctx.translate(screenX, screenY);
-      ctx.strokeStyle = "rgba(225, 106, 45, 0.6)";
-      ctx.lineWidth = 1.6;
-      const dir = Math.sign(skier.yawSpeed) || 1;
-      const yawRad = skier.yawDeg * (Math.PI / 180);
-      const sweep = clamp(Math.abs(yawRad) % TAU, 0.3, TAU * 0.92);
-      ctx.beginPath();
-      if (dir > 0) {
-        ctx.arc(0, 0, ringR, -Math.PI / 2, -Math.PI / 2 + sweep);
-      } else {
-        ctx.arc(0, 0, ringR, -Math.PI / 2, -Math.PI / 2 - sweep, true);
-      }
-      ctx.stroke();
-      const tipA = -Math.PI / 2 + dir * sweep;
-      ctx.fillStyle = "rgba(225, 106, 45, 0.9)";
-      ctx.beginPath();
-      ctx.arc(Math.cos(tipA) * ringR, Math.sin(tipA) * ringR, 2, 0, TAU);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.save();
-    ctx.translate(screenX, screenY);
-
-    // Body orientation = motion direction. In air we commit to takeoff
-    // heading and do NOT rotate from yaw (the ring shows the spin). On the
-    // ground we pivot with heading, plus extra 90° when braking so skis go
-    // perpendicular for a hockey stop.
-    const baseRot = skier.inAir ? skier.airHeading : skier.heading;
+    // Shared geometry setup. `bodyRot` is the canvas rotation that keeps
+    // the torso/head pointed in the skier's travel direction (just like
+    // on the ground). `yawRad` is the extra in-plane rotation for a 360:
+    // it's layered onto the skis only, so the skis sweep around the
+    // vertical axis while the body continues facing forward — the skier
+    // "turns" but keeps going the same direction.
+    const bodyRot = skier.inAir ? skier.airHeading : skier.heading;
     const brakeAdd = !skier.inAir ? skier.brakeAnim * (Math.PI / 2) : 0;
-    ctx.rotate(-baseRot + brakeAdd);
-
-    // Flip squish — X pulls in strongly at mid-flip so it reads as a tuck.
     const pitchRad = (skier.pitchDeg / RAD2DEG) || 0;
+    const yawRad = skier.inAir ? (skier.yawDeg * Math.PI) / 180 : 0;
     const pitchCos = skier.inAir ? Math.cos(pitchRad) : 1;
     const pitchSin = skier.inAir ? Math.sin(pitchRad) : 0;
     const tuckAmount = Math.abs(pitchSin); // 0..1
     const scaleX = 1 - 0.62 * tuckAmount;
     const scaleY = pitchCos || 0.001;
-    ctx.scale(scaleX, scaleY);
 
     const showBack = skier.inAir && pitchCos < 0;
     const jacket = showBack ? "#173468" : "#2f62a6";
@@ -943,12 +915,35 @@
     const ski = showBack ? "#a0392b" : "#d2523f";
     const head = showBack ? "#b68966" : "#e3b187";
 
-    // Skis.
+    // Skis — rotated by bodyRot + yaw so they sweep around during a 360.
+    // Each ski extends both ahead of and behind the skier's pivot (tip
+    // forward, tail back) so that when the skier spins 180° they can
+    // still see skis on both sides of the body — i.e. they can ride
+    // switch. At yaw = 0 the tail sits behind/inside the torso (drawn
+    // before the body, so it's hidden by the body fill); at yaw = 180°
+    // the rotated tail pokes out in front of the body and the rotated
+    // tip pokes out behind, reading as a clean switch stance.
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.rotate(-(bodyRot + yawRad) + brakeAdd);
+    ctx.scale(scaleX, scaleY);
     ctx.fillStyle = ski;
-    ctx.fillRect(-3.1, 1.2, 1.5, 7.5);
-    ctx.fillRect(1.6, 1.2, 1.5, 7.5);
+    const skiTail = -6.5; // behind the pivot (into the torso at yaw=0)
+    const skiTip = 8.7; //  ahead of the pivot
+    const skiLen = skiTip - skiTail;
+    ctx.fillRect(-3.1, skiTail, 1.5, skiLen);
+    ctx.fillRect(1.6, skiTail, 1.5, skiLen);
+    ctx.restore();
 
-    // Body.
+    // Body + head — rotated by bodyRot only. The torso stays pointed in
+    // the direction of travel while the skis spin underneath. On the
+    // ground yawRad is 0 so the body and skis rotate together, preserving
+    // the existing ground-turn look.
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.rotate(-bodyRot + brakeAdd);
+    ctx.scale(scaleX, scaleY);
+
     ctx.fillStyle = jacket;
     ctx.beginPath();
     ctx.moveTo(-3, -6);
@@ -961,7 +956,6 @@
     ctx.lineWidth = 0.6;
     ctx.stroke();
 
-    // Head.
     ctx.fillStyle = head;
     ctx.beginPath();
     ctx.arc(0, -7.5, 1.9, 0, TAU);
@@ -1073,17 +1067,6 @@
   function drawIdle() {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
-    ctx.save();
-    ctx.fillStyle = "rgba(40, 54, 58, 0.85)";
-    ctx.textAlign = "center";
-    ctx.font =
-      '46px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
-    ctx.fillText("gnar", W / 2, H / 2 - 24);
-    ctx.font =
-      '18px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
-    ctx.fillStyle = "rgba(40, 54, 58, 0.65)";
-    ctx.fillText("press start — arrows to ski, spin, flip", W / 2, H / 2 + 10);
-    ctx.restore();
   }
 
   function loop(ts) {
@@ -1146,6 +1129,7 @@
   });
 
   onDestroy(() => {
+    if (typeof window === "undefined") return;
     window.removeEventListener("keydown", handleKey);
     window.removeEventListener("keyup", handleKeyUp);
     if (raf) cancelAnimationFrame(raf);
@@ -1160,26 +1144,16 @@
 </svelte:head>
 
 <div class="ski" bind:this={wrapEl} tabindex="0" on:click={() => wrapEl.focus()}>
-  <span class="eyebrow">Play — gnar</span>
-
   <div class="stage">
     <canvas bind:this={canvas} aria-label="Skiing game"></canvas>
 
     {#if state === "idle"}
       <div class="overlay">
-        <h3>gnar</h3>
-        <p>A little top-down ski run. Carve, send it, spin, flip.</p>
         <button class="btn" on:click={resetGame}>Drop in</button>
-        <p class="hint">
-          ← → pivot / spin in air · ↑ brake (hockey stop) / frontflip in air ·
-          ↓ tuck / backflip in air · Enter to retry
-        </p>
       </div>
     {:else if state === "crashed"}
       <div class="overlay">
-        <h3>{lastTrick || "Crashed"}</h3>
-        <p>You rode <strong>{distance} ft</strong>.</p>
-        <button class="btn" on:click={resetGame}>Drop in again</button>
+        <button class="btn" on:click={resetGame}>Drop in</button>
       </div>
     {/if}
   </div>
@@ -1215,18 +1189,7 @@
       0 0 0 3px rgba(47, 125, 92, 0.18);
   }
 
-  .eyebrow {
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(27, 22, 21, 0.55);
-    position: relative;
-    z-index: 1;
-  }
-
   .stage {
-    margin-top: 1rem;
     position: relative;
     flex: 1;
     min-height: 0;
@@ -1263,28 +1226,6 @@
     -webkit-backdrop-filter: blur(4px) saturate(130%);
     color: #1b1615;
   }
-  .overlay h3 {
-    font-family: "Caveat", var(--font-serif), cursive;
-    font-weight: 700;
-    font-size: clamp(2rem, 3vw, 2.6rem);
-    letter-spacing: -0.01em;
-    margin: 0;
-    color: #28363a;
-  }
-  .overlay p {
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
-    margin: 0;
-    color: rgba(40, 54, 58, 0.8);
-    max-width: 34ch;
-  }
-  .overlay .hint {
-    font-size: 0.78rem;
-    color: rgba(40, 54, 58, 0.6);
-    max-width: 36ch;
-    line-height: 1.55;
-  }
-
   .btn {
     align-self: center;
     display: inline-flex;

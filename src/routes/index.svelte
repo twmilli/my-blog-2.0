@@ -7,37 +7,11 @@
 </script>
 
 <script>
-  import { onMount, onDestroy } from "svelte";
   import PostItem from "../components/PostItem.svelte";
   import Skiing from "../components/Skiing.svelte";
+  import CurrentLocation from "../components/CurrentLocation.svelte";
 
   export let posts = [];
-
-  let localTime = "";
-  let timer;
-
-  const formatTime = () => {
-    try {
-      const now = new Date();
-      const opts = {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: "America/Los_Angeles",
-      };
-      localTime = new Intl.DateTimeFormat("en-US", opts).format(now) + " SF";
-    } catch (e) {
-      localTime = "";
-    }
-  };
-
-  onMount(() => {
-    formatTime();
-    timer = setInterval(formatTime, 30000);
-  });
-
-  onDestroy(() => {
-    if (timer) clearInterval(timer);
-  });
 
   $: featured = posts.slice(0, 4);
 </script>
@@ -62,7 +36,6 @@
     overflow: hidden;
     min-height: 520px;
     box-shadow: var(--shadow-md);
-    border: 1px solid var(--border);
     isolation: isolate;
   }
 
@@ -86,14 +59,14 @@
   }
 
   .tile-photo::after {
-    /* subtle bottom gradient for legibility */
+    /* subtle top gradient for caption legibility */
     content: "";
     position: absolute;
     inset: 0;
     background: linear-gradient(
       180deg,
-      rgba(0, 0, 0, 0) 40%,
-      rgba(0, 0, 0, 0.35) 100%
+      rgba(0, 0, 0, 0.35) 0%,
+      rgba(0, 0, 0, 0) 60%
     );
     pointer-events: none;
   }
@@ -102,24 +75,31 @@
     position: absolute;
     left: 1.25rem;
     right: 1.25rem;
-    bottom: 1.25rem;
+    top: 1.25rem;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.85rem;
     padding: 1.1rem 1.25rem 1rem;
     border-radius: var(--radius-lg);
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    color: #fdfbf6;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #1a6e7e;
+    font-weight: 500;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   }
 
   .caption p {
     font-family: var(--font-serif);
-    font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+    font-size: clamp(0.98rem, 1.45vw, 1.22rem);
     line-height: 1.35;
-    margin: 0 0 0.85rem;
+    margin: 0;
     letter-spacing: -0.01em;
-    color: #fdfbf6;
+    font-weight: 500;
+    color: inherit;
   }
 
   .caption-meta {
@@ -129,19 +109,8 @@
     gap: 1rem;
     font-family: var(--font-sans);
     font-size: 0.85rem;
-    opacity: 0.9;
-    color: #fdfbf6;
-  }
-
-  .caption-meta .dot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: #b0e8c2;
-    margin-right: 0.45rem;
-    vertical-align: middle;
-    box-shadow: 0 0 0 3px rgba(176, 232, 194, 0.25);
+    font-weight: 500;
+    color: inherit;
   }
 
   /* Section */
@@ -186,23 +155,23 @@
 </style>
 
 <svelte:head>
-  <title>Taylor Milliman — Software engineer working on AI at Figma</title>
+  <title>Taylor Milliman</title>
 </svelte:head>
 
 <section class="hero rise-stagger">
-  <a class="tile tile-photo" href="about" aria-label="About Taylor">
+  <div class="tile tile-photo">
     <img src="backgammon.png" alt="Taylor playing backgammon at sunset on a camping trip" />
     <div class="caption">
       <p>
-        Taylor is a software engineer and amateur chef
+        Taylor is a software builder, climber, and life-enjoyer
         based in San Francisco.
       </p>
       <div class="caption-meta">
-        <span><span class="dot"></span>Working on AI at Figma</span>
-        <span>{localTime || "—"}</span>
+        <span>Currently: AI @ Figma</span>
+        <CurrentLocation />
       </div>
     </div>
-  </a>
+  </div>
 
   <Skiing />
 </section>

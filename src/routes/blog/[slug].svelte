@@ -88,17 +88,24 @@
     font-style: italic;
   }
 
-  .content :global(a) {
+  .content :global(a[href^="http"]) {
     color: var(--text);
     background-image: linear-gradient(var(--accent), var(--accent));
     background-repeat: no-repeat;
     background-size: 100% 1px;
     background-position: 0 100%;
+    padding: 0.12em 0.05em 0.04em;
+    margin: 0 -0.05em;
+    border-radius: 2px;
     text-decoration: none;
-    transition: background-size var(--dur-3) var(--ease-out-soft);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size var(--dur-3) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
   }
-  .content :global(a:hover) {
-    background-size: 100% 6px;
+  .content :global(a[href^="http"]:hover) {
+    background-size: 100% 100%;
+    color: var(--accent-ink);
   }
 
   hr {
