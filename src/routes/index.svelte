@@ -9,7 +9,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
   import PostItem from "../components/PostItem.svelte";
-  import Tetris from "../components/Tetris.svelte";
+  import Skiing from "../components/Skiing.svelte";
 
   export let posts = [];
 
@@ -204,7 +204,7 @@
     </div>
   </a>
 
-  <Tetris />
+  <Skiing />
 </section>
 
 <section>
