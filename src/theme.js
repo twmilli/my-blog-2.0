@@ -1,22 +1,26 @@
-// https://github.com/sw-yx/swyxdotio/blob/master/src/theme.js
-const defaultTheme = {
-  name: "default",
-  bgColor: "#1d1f21",
-  textColor: "#eeeeee",
-  linkColor: "#2cb67d",
-  lineLength: "69ch",
-};
+// Minimal theme store: toggles the `data-theme` attribute on <html>
+// and persists the preference. All token values live in global.css so
+// they're available even before hydration.
+const defaultTheme = { name: "light" };
+
 let _themeStore = defaultTheme;
 let subscribers = new Set();
-let broadcast = () => subscribers.forEach((cb) => cb(_themeStore));
-let saveToStorage = () => {
-  if (_themeStore && typeof document !== "undefined")
-    localStorage.setItem("tay_themeStore", JSON.stringify(_themeStore));
+const broadcast = () => subscribers.forEach((cb) => cb(_themeStore));
+
+const applyToDocument = () => {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute("data-theme", _themeStore.name);
 };
+
+const saveToStorage = () => {
+  if (typeof document === "undefined") return;
+  localStorage.setItem("tay_themeStore", JSON.stringify(_themeStore));
+};
+
 export const themeStore = {
   subscribe(cb) {
     if (subscribers.size < 1 && typeof document !== "undefined") {
-      let temp = localStorage.getItem("tay_themeStore");
+      const temp = localStorage.getItem("tay_themeStore");
       _themeStore = temp ? JSON.parse(temp) : defaultTheme;
     }
     cb(_themeStore);
@@ -25,11 +29,13 @@ export const themeStore = {
   },
   set(newVal) {
     _themeStore = newVal;
+    applyToDocument();
     broadcast();
     saveToStorage();
   },
   update(updateFn) {
     _themeStore = updateFn(_themeStore);
+    applyToDocument();
     broadcast();
     saveToStorage();
   },

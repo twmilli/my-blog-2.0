@@ -1,10 +1,8 @@
 <script context="module">
   export function preload({ params, query }) {
     return this.fetch(`blog.json`)
-      .then(r => r.json())
-      .then(posts => {
-        return { posts };
-      });
+      .then((r) => r.json())
+      .then((posts) => ({ posts }));
   }
 </script>
 
@@ -14,71 +12,95 @@
 
   export let posts;
 
-  let options = {
-    keys: ["title", "slug", "tag", "printDate", "excerpt"]
+  const options = {
+    keys: ["title", "slug", "tag", "printDate", "excerpt"],
   };
-  let fuse = new Fuse(posts, options);
+  const fuse = new Fuse(posts, options);
+  let query = "";
   let results = [];
-  const handleSearch = e => {
-    e.preventDefault();
-    const searchText = e.currentTarget.searchField.value;
-    results = fuse.search(searchText).map(p => p.item);
+
+  const handleInput = (e) => {
+    query = e.currentTarget.value;
+    results = query.trim()
+      ? fuse.search(query).map((p) => p.item)
+      : [];
   };
-  console.log(results);
 </script>
 
 <style>
-  .search-term {
-    width: 50%;
-    font-size: 14px;
-    border: none;
-    padding: 10px 15px;
-    height: 40px;
-    border-radius: 20px 0 0 20px;
-    outline: none;
-    color: var(--bg-color);
-    background-color: var(--text-color);
+  .wrap {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 2rem 0;
   }
 
-  .search-button {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--brand-color-primary);
-    background: var(--brand-color-primary);
-    text-align: center;
-    color: #fff;
-    border-radius: 0 5px 5px 0;
-    cursor: pointer;
-    font-size: 20px;
+  h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 3.5vw, 2.8rem);
+    margin: 0 0 1.5rem;
+    letter-spacing: -0.02em;
   }
 
-  .search {
+  .search-field {
     width: 100%;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    padding: 30px 10px;
-    font-size: 14px;
+    padding: 1rem 1.25rem;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--dur-2) var(--ease-out-soft),
+      box-shadow var(--dur-2) var(--ease-out-soft);
+  }
+
+  .search-field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 720px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .empty {
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    margin-top: 1.5rem;
   }
 </style>
 
 <svelte:head>
-  <title>Search</title>
+  <title>Search — Taylor Milliman</title>
 </svelte:head>
 
-<div class="container">
-  <form class="search" on:submit={handleSearch}>
-    <input
-      type="text"
-      class="search-term"
-      placeholder="search"
-      name="searchField" />
-    <button type="submit" class="search-button">🔎</button>
-  </form>
-  {#each results as post, index}
-    {#if index}
-      <hr />
-    {/if}
-    <PostItem {post} />
-  {/each}
+<div class="wrap rise">
+  <h1>Search</h1>
+  <input
+    type="text"
+    class="search-field"
+    placeholder="Try 'food', 'code', 'travel'…"
+    bind:value={query}
+    on:input={handleInput} />
+
+  {#if query && results.length === 0}
+    <p class="empty">No matches. Try a different word.</p>
+  {/if}
+
+  <div class="grid">
+    {#each results as post}
+      <PostItem {post} />
+    {/each}
+  </div>
 </div>

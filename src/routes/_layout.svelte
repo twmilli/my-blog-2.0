@@ -1,92 +1,76 @@
 <script>
-  import { onMount, onDestroy } from "svelte";
   import Header from "../components/Header.svelte";
   import { themeStore } from "../theme.js";
 
-  onMount(renderCSS);
-  onDestroy(() => {
-    if (typeof document === "undefined") return; // SSR
-    var ss = document.getElementById("unique-stylesheet-id");
-    ss.innerHTML = ""; // not actually sure if i need this
-  });
-  let _themeStore; // $ store syntax buggy
-  themeStore.subscribe(v => {
-    _themeStore = v;
-    renderCSS();
-  });
-  function renderCSS() {
-    if (typeof document === "undefined") return; // SSR
-    var ss = document.getElementById("unique-stylesheet-id");
-    if (!ss) return; // not rendered yet
-    let string = ``;
-    if ($themeStore.bgColor) string += `--bg-color: ${$themeStore.bgColor};`;
-    if ($themeStore.textColor)
-      string += `--text-color: ${$themeStore.textColor};`;
-    if ($themeStore.linkColor)
-      string += `--link-color: ${$themeStore.linkColor};`;
-    if ($themeStore.lineLength)
-      string += `--line-length: ${$themeStore.lineLength};`;
-    ss.innerHTML = `html { ${string} }`;
-  }
-
   export let segment;
+
+  // Keep <html data-theme> in sync when the store changes.
+  $: if (
+    typeof document !== "undefined" &&
+    $themeStore &&
+    $themeStore.name
+  ) {
+    document.documentElement.setAttribute("data-theme", $themeStore.name);
+  }
 </script>
 
 <style>
   .layout {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
     min-height: 100vh;
   }
 
   main {
     flex: 1;
-    position: relative;
-    margin: 0 auto;
-    max-width: 1400px;
-    background-color: var(--bg-color);
-    padding: 1em 2em;
-    box-sizing: border-box;
     width: 100%;
-    display: flex;
-    flex-direction: column;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.25rem 1.25rem 4rem;
   }
 
   footer {
-    color: #aaa;
-    font-size: 1em;
-    font-family: Rubik, sans-serif;
-    margin: 1em auto;
-    max-width: 1400px;
-    padding: 1em 2em;
-    text-align: center;
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    font-family: var(--font-sans);
+    letter-spacing: 0.02em;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 2.5rem;
+    max-width: 1200px;
     width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .foot-links {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .foot-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .foot-links a:hover {
+    color: var(--text);
+  }
+
+  @media (max-width: 720px) {
+    main {
+      padding: 1rem 0.75rem 3rem;
+    }
+    footer {
+      padding: 1.5rem 0.75rem 2rem;
+    }
   }
 </style>
 
 <svelte:head>
-  <title>Taylor Milliman's Website</title>
-  <style id="unique-stylesheet-id">
-
-  </style>
-  <script>
-    (function() {
-      let temp = localStorage.getItem("tay_themeStore");
-      if (temp) {
-        temp = JSON.parse(temp);
-        if (typeof document === "undefined") return;
-        var ss = document.getElementById("unique-stylesheet-id");
-        if (!ss) return;
-        let string = ``;
-        if (temp.bgColor) string += `--bg-color: ${temp.bgColor};`;
-        if (temp.textColor) string += `--text-color: ${temp.textColor};`;
-        if (temp.linkColor) string += `--link-color: ${temp.linkColor};`;
-        if (temp.lineLength) string += `--line-length: ${temp.lineLength};`;
-        ss.innerHTML = `html { ${string} }`;
-      }
-    })();
-  </script>
+  <title>Taylor Milliman</title>
 </svelte:head>
 
 <div class="layout">
@@ -97,6 +81,11 @@
   </main>
 
   <footer>
-    <span>&copy; {new Date().getFullYear()}. Made with ❤️ + ☕.</span>
+    <span>© {new Date().getFullYear()} Taylor Milliman. Made in SF.</span>
+    <span class="foot-links">
+      <a href="https://taylor.substack.com/" target="_blank" rel="noopener noreferrer">Substack</a>
+      <a href="https://twitter.com/TayTayTrey" target="_blank" rel="noopener noreferrer">Twitter</a>
+      <a href="https://github.com/twmilli" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </span>
   </footer>
 </div>

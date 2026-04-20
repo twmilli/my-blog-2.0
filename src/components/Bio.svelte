@@ -1,35 +1,53 @@
 <style>
-  div {
-    align-items: center;
+  .bio {
     display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
   }
 
-  img {
-    width: 100px;
-    height: 100px;
-    border-radius: 100px;
-    /* border: 3px solid #fd6378; */
-    display: block;
-    margin-right: 20px;
+  .avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
   }
 
   p {
-    font-size: 1.125rem;
+    font-family: var(--font-sans);
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin: 0;
+    color: var(--text);
+  }
+
+  p a {
+    color: var(--text);
+    border-bottom: 1px solid var(--accent);
+    transition: background var(--dur-2) var(--ease-out-soft);
+  }
+
+  p a:hover {
+    background: var(--accent-soft);
   }
 </style>
 
-<div>
-  <img src="tay.jpg" alt="Maxi Ferreira" />
+<div class="bio">
+  <img class="avatar" src="tay.jpg" alt="Portrait of Taylor" />
   <p>
-    Hi, I'm
+    Written by
     <strong>Taylor</strong>
-    . I'm a software engineer/maker/amateur chef currently living in San
-    Francisco. You can follow me on
-    <a href="https://twitter.com/TayTayTrey" target="_blank">Twitter</a>
-    , see some of my work on
-    <a href="https://github.com/twmilli" target="_blank">GitHub</a>
-    , or read about my life on
-    <a href="https://taylor.substack.com/" target="_blank">Substack</a>
-    .
+    — software engineer working on AI at Figma. Living in San Francisco.
+    Follow along on
+    <a href="https://twitter.com/TayTayTrey" target="_blank" rel="noopener noreferrer">Twitter</a>,
+    <a href="https://github.com/twmilli" target="_blank" rel="noopener noreferrer">GitHub</a>,
+    or
+    <a href="https://taylor.substack.com/" target="_blank" rel="noopener noreferrer">Substack</a>.
   </p>
 </div>

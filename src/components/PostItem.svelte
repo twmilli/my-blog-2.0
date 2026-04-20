@@ -3,72 +3,125 @@
 </script>
 
 <style>
-  h2 {
-    font-size: 36px;
-  }
-  h2,
-  .post-item-date {
-    font-family: Rubik, sans-serif;
-    font-weight: 700;
-    color: #aaa;
-    text-align: left;
-    text-transform: uppercase;
-    margin: 1rem 0;
-  }
-
-  .read-more-container {
-    display: inline-block;
-  }
-
-  .read-more-link {
-    font-size: 18px;
-    height: 30px;
-    position: relative;
+  .post-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem;
+    min-height: 260px;
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
     text-decoration: none;
-    color: var(--brand-color-primary);
+    overflow: hidden;
+    position: relative;
+    transition: transform var(--dur-3) var(--ease-out-soft),
+      box-shadow var(--dur-3) var(--ease-out-soft),
+      border-color var(--dur-2) var(--ease-out-soft);
   }
 
-  .read-arrow {
+  .post-card::after {
+    /* soft radial sheen */
+    content: "";
     position: absolute;
-    bottom: -2.25px;
-    left: 100px;
+    inset: -1px;
+    background: radial-gradient(
+      600px 200px at 100% 0%,
+      var(--accent-soft) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity var(--dur-3) var(--ease-out-soft);
+    pointer-events: none;
   }
 
-  .read-more-span {
-    margin-top: 8px;
-    display: block;
-    border-bottom: 2px solid var(--brand-color-primary);
-    width: 0%;
+  .post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
   }
 
-  .read-more-container:hover .read-more-span {
-    animation: underline 500ms ease-in-out;
-    width: 120px;
+  .post-card:hover::after {
+    opacity: 0.45;
   }
 
-  p {
-    font-size: 16px;
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
-  @keyframes underline {
-    from {
-      width: 0%;
-    }
-    to {
-      width: 120px;
-    }
+  .meta .tag {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+
+  h3 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.3rem, 2vw, 1.65rem);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 1rem 0 0.5rem;
+    color: var(--text);
+  }
+
+  .excerpt {
+    font-size: 0.98rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0 0 1.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .read {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .read .arr {
+    transition: transform var(--dur-2) var(--ease-out-soft);
+  }
+
+  .post-card:hover .read .arr {
+    transform: translateX(3px);
   }
 </style>
 
-<div class="post-item">
-  <h2>{post.title}</h2>
-  <span class="post-item-date">{post.printDate}</span>
-  <p>{post.excerpt}</p>
-  <div class="read-more-container">
-    <a rel="prefetch" href="blog/{post.slug}" class="read-more-link">
-      Read more
-      <img src="./arrow-right.svg" alt="arrow right" class="read-arrow" />
-    </a>
-    <span class="read-more-span" />
+<a class="post-card" rel="prefetch" href="blog/{post.slug}">
+  <div>
+    <div class="meta">
+      <span>{post.printDate}</span>
+      {#if post.tag}
+        <span class="tag">{post.tag}</span>
+      {/if}
+    </div>
+    <h3>{post.title}</h3>
+    {#if post.excerpt}
+      <p class="excerpt">{post.excerpt}</p>
+    {/if}
   </div>
-</div>
+  <span class="read">
+    Read essay <span class="arr">→</span>
+  </span>
+</a>
