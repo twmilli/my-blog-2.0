@@ -1,12 +1,13 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { cubicOut, backOut, backIn } from "svelte/easing";
+  import { backOut, backIn } from "svelte/easing";
   import { themeStore } from "../theme.js";
 
   export let segment;
 
   let contactOpen = false;
   let contactRef;
+  $: currentThemeIsDark = $themeStore && $themeStore.name === "dark";
 
   const prefersReducedMotion = () =>
     typeof window !== "undefined" &&
@@ -73,14 +74,15 @@
   }
 
   const toggleTheme = () => {
-    themeStore.set({
-      name: ($themeStore && $themeStore.name) === "dark" ? "light" : "dark",
-    });
+    themeStore.toggleMode();
+  };
+
+  const toggleContactMenu = () => {
+    contactOpen = !contactOpen;
   };
 
   const handleClickOutside = (e) => {
-    if (!contactOpen) return;
-    if (contactRef && !contactRef.contains(e.target)) {
+    if (contactOpen && contactRef && !contactRef.contains(e.target)) {
       contactOpen = false;
     }
   };
@@ -163,15 +165,15 @@
     }
   }
 
-  .contact-wrap.open .caret {
+  .menu-wrap.open .caret {
     transform: rotate(-135deg) translate(-2px, -2px);
   }
 
-  .contact-wrap {
+  .menu-wrap {
     position: relative;
   }
 
-  .contact-menu {
+  .menu-panel {
     position: absolute;
     top: calc(100% + 0.5rem);
     right: 0;
@@ -188,26 +190,31 @@
     will-change: transform, opacity;
   }
 
-  .contact-menu a {
+  .menu-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    width: 100%;
     padding: 0.6rem 0.8rem;
+    border: 0;
     border-radius: 10px;
+    background: transparent;
     font-family: var(--font-sans);
     font-size: 0.95rem;
     color: var(--text);
     text-decoration: none;
+    text-align: left;
+    cursor: pointer;
     transition: background var(--dur-1) var(--ease-out-soft);
   }
 
-  .contact-menu a:hover {
+  .menu-item:hover {
     background: var(--surface-2);
     color: var(--text);
   }
 
-  .contact-menu .meta {
+  .menu-item .meta {
     color: var(--text-muted);
     font-size: 0.8rem;
   }
@@ -259,7 +266,7 @@
     </a>
 
     <div
-      class="contact-wrap"
+      class="menu-wrap contact-wrap"
       class:open={contactOpen}
       bind:this={contactRef}>
       <button
@@ -267,18 +274,19 @@
         class="pill"
         aria-haspopup="true"
         aria-expanded={contactOpen}
-        on:click={() => (contactOpen = !contactOpen)}>
+        on:click={toggleContactMenu}>
         Contact
         <span class="caret" aria-hidden="true"></span>
       </button>
 
       {#if contactOpen}
         <div
-          class="contact-menu"
+          class="menu-panel"
           role="menu"
           in:menuIn
           out:menuOut={{ delay: 70, duration: 170 }}>
           <a
+            class="menu-item"
             href="mailto:twm013@bucknell.edu"
             role="menuitem"
             in:menuItem={{ delay: 80, duration: 280 }}
@@ -286,6 +294,7 @@
             <span>Email</span><span class="meta">→</span>
           </a>
           <a
+            class="menu-item"
             href="https://twitter.com/TayTayTrey"
             target="_blank"
             rel="noopener noreferrer"
@@ -295,6 +304,7 @@
             <span>Twitter</span><span class="meta">↗</span>
           </a>
           <a
+            class="menu-item"
             href="https://github.com/twmilli"
             target="_blank"
             rel="noopener noreferrer"
@@ -304,6 +314,7 @@
             <span>GitHub</span><span class="meta">↗</span>
           </a>
           <a
+            class="menu-item"
             href="https://taylor.substack.com/"
             target="_blank"
             rel="noopener noreferrer"
@@ -313,6 +324,7 @@
             <span>Substack</span><span class="meta">↗</span>
           </a>
           <a
+            class="menu-item"
             href="https://www.linkedin.com/in/taylor-milliman/"
             target="_blank"
             rel="noopener noreferrer"
@@ -328,9 +340,9 @@
     <button
       type="button"
       class="icon-btn"
-      aria-label="Toggle color theme"
+      aria-label={currentThemeIsDark ? "Switch to light mode" : "Switch to dark mode"}
       on:click={toggleTheme}>
-      {#if $themeStore && $themeStore.name === 'dark'}
+      {#if currentThemeIsDark}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       {:else}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>

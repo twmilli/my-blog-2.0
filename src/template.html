@@ -25,8 +25,10 @@
       (function () {
         try {
           var temp = localStorage.getItem("tay_themeStore");
-          var name = temp ? JSON.parse(temp).name : "light";
-          document.documentElement.setAttribute("data-theme", name || "light");
+          var parsed = temp ? JSON.parse(temp) : null;
+          var name = parsed && parsed.name === "dark" ? "dark" : "light";
+
+          document.documentElement.setAttribute("data-theme", name);
         } catch (e) {
           document.documentElement.setAttribute("data-theme", "light");
         }

@@ -3,8 +3,13 @@
 // they're available even before hydration.
 const defaultTheme = { name: "light" };
 
+const normalizeThemeState = (theme = defaultTheme) => ({
+  name: theme && theme.name === "dark" ? "dark" : "light",
+});
+
 let _themeStore = defaultTheme;
 let subscribers = new Set();
+
 const broadcast = () => subscribers.forEach((cb) => cb(_themeStore));
 
 const applyToDocument = () => {
@@ -14,29 +19,49 @@ const applyToDocument = () => {
 
 const saveToStorage = () => {
   if (typeof document === "undefined") return;
-  localStorage.setItem("tay_themeStore", JSON.stringify(_themeStore));
+
+  try {
+    localStorage.setItem("tay_themeStore", JSON.stringify(_themeStore));
+  } catch (e) {
+    // Ignore storage failures; the in-memory theme still works.
+  }
+};
+
+const commitTheme = (nextTheme) => {
+  _themeStore = normalizeThemeState(nextTheme);
+  applyToDocument();
+  broadcast();
+  saveToStorage();
+};
+
+const loadFromStorage = () => {
+  if (typeof document === "undefined") return;
+
+  try {
+    const temp = localStorage.getItem("tay_themeStore");
+    _themeStore = temp ? normalizeThemeState(JSON.parse(temp)) : defaultTheme;
+  } catch (e) {
+    _themeStore = defaultTheme;
+  }
 };
 
 export const themeStore = {
   subscribe(cb) {
     if (subscribers.size < 1 && typeof document !== "undefined") {
-      const temp = localStorage.getItem("tay_themeStore");
-      _themeStore = temp ? JSON.parse(temp) : defaultTheme;
+      loadFromStorage();
     }
+
     cb(_themeStore);
     subscribers.add(cb);
     return () => void subscribers.delete(cb);
   },
   set(newVal) {
-    _themeStore = newVal;
-    applyToDocument();
-    broadcast();
-    saveToStorage();
+    commitTheme(newVal);
   },
   update(updateFn) {
-    _themeStore = updateFn(_themeStore);
-    applyToDocument();
-    broadcast();
-    saveToStorage();
+    commitTheme(updateFn(_themeStore));
+  },
+  toggleMode() {
+    commitTheme({ name: _themeStore.name === "dark" ? "light" : "dark" });
   },
 };
