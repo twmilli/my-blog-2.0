@@ -50,8 +50,8 @@
       vz: 0,
       airStartY: 0,
       airHeading: 0,
-      // Whether we popped from a box/rail (affects naming)
-      airSource: null, // 'kicker' | 'box' | 'rail' | null
+      // Whether we popped from a rail (affects naming)
+      airSource: null, // 'kicker' | 'rail' | null
       onFeature: null, // currently grinding this feature id
 
       // Yaw (in-plane spin count) — NOT drawn as body rotation; shown via ring
@@ -64,6 +64,10 @@
       pitchSpeed: 0,
       pitchSpun: 0,
       pitchDir: 0,
+
+      // Switch stance
+      switch: false,
+      switchTakeoff: false,
     };
     worldY = 0;
     features = [];
@@ -90,47 +94,68 @@
     while (nextFeatureY < ahead) {
       const roll = Math.random();
       const cx = rand(-SLOPE_HALF + 40, SLOPE_HALF - 40);
-      if (roll < 0.22) {
-        // Kicker — the classic launch ramp
+      if (roll < 0.38) {
+        // Kicker + paired knuckle landing zone. The kicker is the launch
+        // ramp only; the knuckle is a separate mound placed so the
+        // ballistic arc reliably lands on its top face.
+        const kickerId = ++_featureId;
+        const gap = rand(120, 140);
+        const topLen = 150;
+        const outSlope = 36;
         features.push({
-          id: ++_featureId,
+          id: kickerId,
           type: "kicker",
           x: cx,
           y: nextFeatureY,
-          w: rand(60, 90),
-          rampLen: rand(34, 48),
-          power: rand(150, 220),
+          w: rand(54, 72),
+          rampLen: rand(30, 40),
+          power: rand(175, 200),
+          pairedKnuckleId: kickerId + 1,
         });
-        nextFeatureY += rand(180, 280);
-      } else if (roll < 0.38) {
-        // Box — flat-topped, approach ramp on uphill side
-        const len = rand(52, 82);
         features.push({
           id: ++_featureId,
-          type: "box",
+          type: "knuckle",
           x: cx,
-          y: nextFeatureY,
-          w: rand(56, 76),
-          len,
-          rampLen: rand(22, 34),
-          height: rand(14, 22),
+          y: nextFeatureY + gap + topLen / 2,
+          w: rand(84, 104),
+          topLen,
+          outSlope,
+          lipHeight: 10,
+          pairedKickerId: kickerId,
         });
-        nextFeatureY += len + rand(150, 230);
+        nextFeatureY += gap + topLen + outSlope + rand(180, 240);
       } else if (roll < 0.52) {
-        // Rail — orange bar, small approach hump
+        // Rail — always paired with a small approach kicker. The kicker is
+        // a real kicker under the hood (shares physics with the big
+        // kicker + knuckle pair) but is tiny and low-powered so the
+        // ballistic arc lands the skier on the rail rather than over it.
+        const railKickerId = ++_featureId;
+        const railId = railKickerId + 1;
+        const gap = rand(18, 26);
         const len = rand(70, 110);
         const angle = rand(-0.28, 0.28);
+        features.push({
+          id: railKickerId,
+          type: "kicker",
+          variant: "railApproach",
+          x: cx,
+          y: nextFeatureY,
+          w: rand(38, 50),
+          rampLen: rand(22, 30),
+          power: rand(95, 120),
+          pairedRailId: railId,
+        });
         features.push({
           id: ++_featureId,
           type: "rail",
           x: cx,
-          y: nextFeatureY,
+          y: nextFeatureY + gap + len / 2,
           len,
           angle,
-          rampLen: 16,
           height: 6,
+          pairedKickerId: railKickerId,
         });
-        nextFeatureY += len + rand(130, 200);
+        nextFeatureY += gap + len + rand(130, 200);
       } else if (roll < 0.7) {
         // Tree: side only
         const side = Math.random() < 0.5 ? -1 : 1;
@@ -225,34 +250,63 @@
       skier.x += Math.sin(skier.airHeading) * skier.speed * dt;
       worldY += Math.cos(skier.airHeading) * skier.speed * dt;
 
-      if (skier.altitude <= 0) {
+      if (tryMountRailFromAir()) {
+        // Mounted a rail — skip the ground-landing check this frame.
+      } else if (skier.altitude <= 0) {
         landFromAir();
       }
     } else if (skier.onFeature) {
-      // ---- GRINDING on a rail/box top ----------------------------------
+      // ---- GRINDING on a rail ------------------------------------------
       const f = features.find((ft) => ft.id === skier.onFeature);
       if (!f) {
         skier.onFeature = null;
       } else {
-        // Allow mild steering while grinding so you can bail cleanly.
-        skier.heading += steer * 0.5 * dt;
-        skier.heading = clamp(skier.heading, -1.1, 1.1);
+        // Yaw spins like the air — left/right rotates the skier in-plane
+        // while the preserved incoming path keeps carrying them forward.
+        skier.yawSpeed += steer * 1240 * dt;
+        skier.yawSpeed = clamp(skier.yawSpeed, -1360, 1360);
+        skier.yawSpeed *= Math.pow(0.985, dt * 60);
+        skier.yawDeg += skier.yawSpeed * dt;
+        skier.yawSpun += Math.abs(skier.yawSpeed) * dt;
 
-        const endY = f.y + (f.len || 30) / 2;
-        const startY = f.y - (f.len || 30) / 2;
-        skier.x += Math.sin(skier.heading) * skier.speed * dt;
-        worldY += Math.cos(skier.heading) * skier.speed * dt;
+        // Grinding preserves the incoming line exactly — the rail does not
+        // get to bend the skier's path. If that line drifts off the bar,
+        // the skier simply pops out rather than snapping back on.
+        const travelHeading = skier.heading;
+        const stepX = Math.sin(travelHeading) * skier.speed * dt;
+        const stepY = Math.cos(travelHeading) * skier.speed * dt;
+        skier.x += stepX;
+        worldY += stepY;
+
         skier.grindSpun = (skier.grindSpun || 0) + dt;
-        if (worldY > endY) {
+
+        const railAngle = f.angle || 0;
+        const ox = skier.x - f.x;
+        const oy = worldY - f.y;
+        const localDx =
+          ox * Math.cos(-railAngle) - oy * Math.sin(-railAngle);
+        const localDy =
+          ox * Math.sin(-railAngle) + oy * Math.cos(-railAngle);
+
+        // Leave the grind as soon as the preserved path exits the rail's
+        // usable footprint, either by running off the end or sliding off
+        // the side.
+        if (
+          Math.abs(localDx) > 5 ||
+          localDy < -f.len / 2 ||
+          localDy > f.len / 2
+        ) {
           skier.inAir = true;
-          skier.vz = 32 + skier.speed * 0.12;
+          // Small speed-scaled pop off the end — a gentle ollie rather
+          // than a real jump.
+          skier.vz = 18 + skier.speed * 0.22;
+          skier.altitude = 0;
           skier.airStartY = worldY;
-          skier.airHeading = skier.heading;
+          skier.airHeading = travelHeading;
           skier.airSource = f.type;
           skier.pitchDir = 0;
-          skier.grindFeet = Math.round(
-            Math.max(0, (worldY - startY)) / 6,
-          );
+          skier.switchTakeoff = skier.switch;
+          skier.grindFeet = Math.round(Math.max(0, localDy + f.len / 2) / 6);
           skier.onFeature = null;
         }
       }
@@ -334,6 +388,75 @@
     trickTimer = Math.max(0, trickTimer - dt);
   }
 
+  function crashFromAir() {
+    skier.altitude = 0;
+    skier.inAir = false;
+    skier.vz = 0;
+    skier.onFeature = null;
+    skier.yawSpeed = 0;
+    skier.yawDeg = 0;
+    skier.yawSpun = 0;
+    skier.pitchSpeed = 0;
+    skier.pitchDeg = 0;
+    skier.pitchSpun = 0;
+    skier.pitchDir = 0;
+    skier.airSource = null;
+    skier.switchTakeoff = false;
+    skier.grindSpun = 0;
+    skier.grindFeet = 0;
+    state = "crashed";
+    lastTrick = sketchyLandingName();
+    trickTimer = 4;
+  }
+
+  function mountRailFromAir(f) {
+    const pitchResMod = mod(skier.pitchDeg, 180);
+    const pitchAligned = pitchResMod < 45 || pitchResMod > 135;
+
+    if (!pitchAligned) {
+      crashFromAir();
+      return true;
+    }
+
+    skier.altitude = 0;
+    skier.inAir = false;
+    skier.vz = 0;
+    skier.onFeature = f.id;
+    skier.heading = skier.airHeading;
+    // Rail catches preserve yaw so the skier can land sideways and keep
+    // spinning, but pitching has to settle immediately onto the feature.
+    // Importantly, the catch does not nudge x/y or re-aim the trajectory.
+    skier.pitchSpeed = 0;
+    skier.pitchDeg = 0;
+    skier.pitchSpun = 0;
+    skier.pitchDir = 0;
+    skier.grindFeet = 0;
+    skier.grindSpun = 0;
+    return true;
+  }
+
+  // Rails can be caught once the skier is actually descending and close to
+  // the bar. Unlike a snow landing, a rail catch preserves yaw so you can
+  // lock in sideways or keep spinning while the rail constrains travel.
+  function tryMountRailFromAir() {
+    for (const f of features) {
+      if (f.type !== "rail") continue;
+      const ox = skier.x - f.x;
+      const oy = worldY - f.y;
+      const cos = Math.cos(-(f.angle || 0));
+      const sin = Math.sin(-(f.angle || 0));
+      const localDx = ox * cos - oy * sin;
+      const localDy = ox * sin + oy * cos;
+      const descending = skier.vz <= 0;
+      const catchHeight = 14 + (f.height || 0);
+      if (!descending || skier.altitude > catchHeight) continue;
+      if (Math.abs(localDx) < 5 && Math.abs(localDy) < f.len / 2) {
+        return mountRailFromAir(f);
+      }
+    }
+    return false;
+  }
+
   function handleFeatureEntry() {
     for (const f of features) {
       const dx = f.x - skier.x;
@@ -347,33 +470,40 @@
           skier.airSource = "kicker";
           return;
         }
-      } else if (f.type === "box") {
-        // Lock on while the skier is anywhere along the approach ramp.
+      } else if (f.type === "knuckle") {
+        // The knuckle's uphill lip is a mini-kicker. If the skier rolls
+        // into it at ground level (they skipped the main jump or came up
+        // short) they get a small pop. Landings from the paired kicker
+        // touch down past the lip so they won't retrigger this.
         const halfW = f.w / 2;
-        const rampTop = f.y - f.len / 2 - f.rampLen; // uphill edge of ramp
-        const rampBase = f.y - f.len / 2; // base of ramp = top-of-box entry
-        if (
-          Math.abs(dx) < halfW &&
-          worldY > rampTop - 4 &&
-          worldY < rampBase + 6
-        ) {
-          skier.onFeature = f.id;
-          skier.grindSpun = 0;
-          skier.grindFeet = 0;
+        const uphillEdge = f.y - f.topLen / 2;
+        const dy = uphillEdge - worldY;
+        if (Math.abs(dx) < halfW && dy > -8 && dy < 10) {
+          skier.inAir = true;
+          skier.vz = 55 + skier.speed * 0.12;
+          skier.altitude = 0;
+          skier.airStartY = worldY;
+          skier.airHeading = skier.heading;
+          skier.airSource = "knuckle";
+          skier.pitchDir = 0;
           return;
         }
       } else if (f.type === "rail") {
-        const rampTop = f.y - f.len / 2 - f.rampLen;
-        const rampBase = f.y - f.len / 2;
-        if (
-          Math.abs(dx) < 14 &&
-          worldY > rampTop - 4 &&
-          worldY < rampBase + 4
-        ) {
-          skier.onFeature = f.id;
-          skier.grindSpun = 0;
-          skier.grindFeet = 0;
-          return;
+        // Ground contact with a rail is a bump — no magical mount. You
+        // have to be airborne (off the paired kicker) to actually grind.
+        const angle = f.angle || 0;
+        const ox = skier.x - f.x;
+        const oy = worldY - f.y;
+        const localDx = ox * Math.cos(-angle) - oy * Math.sin(-angle);
+        const localDy = ox * Math.sin(-angle) + oy * Math.cos(-angle);
+        if (Math.abs(localDx) < 4 && Math.abs(localDy) < f.len / 2 + 2) {
+          skier.speed = Math.max(35, skier.speed - 55);
+          // Nudge the skier to whichever side of the bar they hit from so
+          // they don't retrigger the same bump next frame.
+          const side = localDx >= 0 ? 1 : -1;
+          const offX = side * 6;
+          skier.x += offX * Math.cos(angle);
+          worldY += offX * Math.sin(angle);
         }
       } else if (f.type === "tree") {
         const dy = f.y - worldY;
@@ -396,10 +526,13 @@
 
   function launch(f, power) {
     skier.inAir = true;
-    skier.vz = power + skier.speed * 0.18;
+    // Minimal speed contribution keeps airtime stable across the normal
+    // speed range so the paired knuckle lands the skier reliably.
+    skier.vz = power + skier.speed * 0.05;
     skier.airStartY = worldY;
     skier.airHeading = skier.heading;
     skier.pitchDir = 0;
+    skier.switchTakeoff = skier.switch;
   }
 
   function landFromAir() {
@@ -416,6 +549,8 @@
 
     if (yawAligned && pitchAligned) {
       const grindFeet = skier.grindFeet || 0;
+      const halfTurns = Math.round(skier.yawDeg / 180);
+      if (halfTurns % 2 !== 0) skier.switch = !skier.switch;
       lastTrick = nameTrick(
         yawRounded,
         pitchRoundedAbs,
@@ -423,6 +558,7 @@
         airFeet,
         skier.airSource,
         grindFeet,
+        skier.switchTakeoff,
       );
       trickTimer = 2.8;
     } else {
@@ -440,6 +576,7 @@
     skier.pitchSpun = 0;
     skier.pitchDir = 0;
     skier.airSource = null;
+    skier.switchTakeoff = false;
     skier.grindSpun = 0;
     skier.grindFeet = 0;
   }
@@ -456,18 +593,19 @@
     return "";
   }
 
-  function nameTrick(yawDeg, pitchDeg, pitchDir, feet, source, grindFeet) {
+  function nameTrick(yawDeg, pitchDeg, pitchDir, feet, source, grindFeet, isSwitch) {
     const parts = [];
-    if (source === "box" && grindFeet > 0) parts.push(`box slide ${grindFeet}ft`);
     if (source === "rail" && grindFeet > 0) parts.push(`rail slide ${grindFeet}ft`);
     if (yawDeg >= 180) parts.push(`${yawDeg}°`);
     const fn = flipName(pitchDeg, pitchDir || 1);
     if (fn) parts.push(fn);
     if (parts.length === 0) {
+      if (isSwitch) return feet >= 12 ? `zero spin · ${feet} ft` : "zero spin";
       if (feet >= 12) return `${feet} ft air`;
       return "clean landing";
     }
-    return `${parts.join(" + ")} · ${feet} ft`;
+    const name = `${parts.join(" + ")} · ${feet} ft`;
+    return isSwitch ? `switch ${name}` : name;
   }
 
   function sketchyLandingName() {
@@ -618,7 +756,9 @@
 
     const halfW = f.w / 2;
     const rampLen = f.rampLen;
-    const frontDepth = 10;
+    // Rail-approach kickers are physically smaller, so scale the front
+    // cliff proportionally. Regular kickers keep the original 10.
+    const frontDepth = f.variant === "railApproach" ? 6 : 10;
 
     // Shadow on downhill side.
     ctx.fillStyle = "rgba(58, 76, 80, 0.1)";
@@ -658,71 +798,84 @@
     ctx.restore();
   }
 
-  function drawBox(f) {
+  function drawKnuckle(f) {
+    // The knuckle is a tapered snow mound: a short lip-face on the uphill
+    // side (the "knuckle" the skier lands on top of), a flat top that is
+    // the actual landing zone, and a long gentle output slope fading back
+    // to piste on the downhill side.
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
 
     const halfW = f.w / 2;
-    const halfLen = f.len / 2;
-    const rampLen = f.rampLen;
-    const height = f.height; // visible front face height
+    const halfLen = f.topLen / 2;
+    const outSlope = f.outSlope;
+    const lipHeight = f.lipHeight;
+    const topHalfW = halfW * 0.9;
 
-    // Shadow cast downhill.
-    ctx.fillStyle = "rgba(58, 76, 80, 0.13)";
+    // Shadow cast downhill of the output slope.
+    ctx.fillStyle = "rgba(58, 76, 80, 0.12)";
     ctx.beginPath();
-    ctx.moveTo(-halfW + 4, halfLen + height);
-    ctx.lineTo(halfW + 4, halfLen + height);
-    ctx.lineTo(halfW + 10, halfLen + height + 6);
-    ctx.lineTo(-halfW + 10, halfLen + height + 6);
+    ctx.moveTo(-halfW * 0.55 + 4, halfLen + outSlope);
+    ctx.lineTo(halfW * 0.55 + 4, halfLen + outSlope);
+    ctx.lineTo(halfW * 0.4 + 10, halfLen + outSlope + 6);
+    ctx.lineTo(-halfW * 0.4 + 10, halfLen + outSlope + 6);
     ctx.closePath();
     ctx.fill();
 
-    // Approach ramp (uphill side — drawn at top of the box graphic).
-    ctx.fillStyle = "#dfe7e5";
+    // Output slope — soft gradient fading into the snow.
+    const outGrad = ctx.createLinearGradient(0, halfLen, 0, halfLen + outSlope);
+    outGrad.addColorStop(0, "#dde4e2");
+    outGrad.addColorStop(1, "rgba(239, 243, 242, 0)");
+    ctx.fillStyle = outGrad;
     ctx.beginPath();
-    ctx.moveTo(-halfW * 0.85, -halfLen - rampLen);
-    ctx.lineTo(halfW * 0.85, -halfLen - rampLen);
+    ctx.moveTo(-halfW, halfLen);
+    ctx.lineTo(halfW, halfLen);
+    ctx.lineTo(halfW * 0.55, halfLen + outSlope);
+    ctx.lineTo(-halfW * 0.55, halfLen + outSlope);
+    ctx.closePath();
+    ctx.fill();
+
+    // Uphill face — the short cliff that rises from the piste up to the
+    // landing zone. Drawn above the top face in screen-y so the skier
+    // sees it approaching.
+    ctx.fillStyle = "#b7c6c3";
+    ctx.beginPath();
+    ctx.moveTo(-topHalfW, -halfLen - lipHeight);
+    ctx.lineTo(topHalfW, -halfLen - lipHeight);
     ctx.lineTo(halfW, -halfLen);
     ctx.lineTo(-halfW, -halfLen);
+    ctx.closePath();
+    ctx.fill();
+    const faceGrad = ctx.createLinearGradient(
+      0,
+      -halfLen - lipHeight,
+      0,
+      -halfLen,
+    );
+    faceGrad.addColorStop(0, "rgba(0,0,0,0.04)");
+    faceGrad.addColorStop(1, "rgba(0,0,0,0.22)");
+    ctx.fillStyle = faceGrad;
+    ctx.fill();
+
+    // Top face (the landing zone). Taper slightly toward the uphill lip.
+    ctx.fillStyle = "#eff3f2";
+    ctx.beginPath();
+    ctx.moveTo(-topHalfW, -halfLen);
+    ctx.lineTo(topHalfW, -halfLen);
+    ctx.lineTo(halfW, halfLen);
+    ctx.lineTo(-halfW, halfLen);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "rgba(150, 168, 166, 0.55)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Front face (downhill cliff).
-    ctx.fillStyle = "#b7c6c3";
+    // Crisp lip on the uphill edge — this is the "knuckle" the skier
+    // should land just past.
     ctx.beginPath();
-    ctx.moveTo(-halfW, halfLen);
-    ctx.lineTo(halfW, halfLen);
-    ctx.lineTo(halfW, halfLen + height);
-    ctx.lineTo(-halfW, halfLen + height);
-    ctx.closePath();
-    ctx.fill();
-    const fg = ctx.createLinearGradient(0, halfLen, 0, halfLen + height);
-    fg.addColorStop(0, "rgba(255,255,255,0.28)");
-    fg.addColorStop(1, "rgba(0,0,0,0.18)");
-    ctx.fillStyle = fg;
-    ctx.fillRect(-halfW, halfLen, halfW * 2, height);
-
-    // Top face.
-    ctx.fillStyle = "#eff3f2";
-    ctx.beginPath();
-    ctx.moveTo(-halfW, -halfLen);
-    ctx.lineTo(halfW, -halfLen);
-    ctx.lineTo(halfW, halfLen);
-    ctx.lineTo(-halfW, halfLen);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "rgba(150, 168, 166, 0.65)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Crisp lip on downhill edge.
-    ctx.beginPath();
-    ctx.moveTo(-halfW, halfLen);
-    ctx.lineTo(halfW, halfLen);
+    ctx.moveTo(-topHalfW, -halfLen);
+    ctx.lineTo(topHalfW, -halfLen);
     ctx.strokeStyle = "rgba(255,255,255,0.95)";
     ctx.lineWidth = 1.6;
     ctx.stroke();
@@ -736,23 +889,10 @@
     ctx.translate(f.x, sy);
 
     const halfLen = f.len / 2;
-    const rampLen = f.rampLen;
     const barHalfW = 2.4;
 
-    // Small approach hump on uphill side.
-    ctx.fillStyle = "#e1e8e7";
-    ctx.beginPath();
-    ctx.moveTo(-6, -halfLen - rampLen);
-    ctx.lineTo(6, -halfLen - rampLen);
-    ctx.lineTo(9, -halfLen);
-    ctx.lineTo(-9, -halfLen);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "rgba(150, 168, 166, 0.45)";
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    // Rotate for diagonal rails.
+    // Rotate for diagonal rails. The approach hump is now rendered by the
+    // paired rail-approach kicker (see drawKicker).
     ctx.rotate(f.angle || 0);
 
     // Shadow under the rail (downhill side).
@@ -887,16 +1027,18 @@
       ctx.restore();
     }
 
-    // Shared geometry setup. `bodyRot` is the canvas rotation that keeps
-    // the torso/head pointed in the skier's travel direction (just like
-    // on the ground). `yawRad` is the extra in-plane rotation for a 360:
-    // it's layered onto the skis only, so the skis sweep around the
-    // vertical axis while the body continues facing forward — the skier
-    // "turns" but keeps going the same direction.
-    const bodyRot = skier.inAir ? skier.airHeading : skier.heading;
+    // Shared geometry setup. In the air the torso keeps facing the travel
+    // direction while the skis spin underneath. On rails, yaw rotates the
+    // whole skier around the preserved travel line so sideways locks and
+    // continuing spins read clearly without the rail re-aiming the skier.
+    const bodyRotBase = skier.inAir ? skier.airHeading : skier.heading;
     const brakeAdd = !skier.inAir ? skier.brakeAnim * (Math.PI / 2) : 0;
     const pitchRad = (skier.pitchDeg / RAD2DEG) || 0;
-    const yawRad = skier.inAir ? (skier.yawDeg * Math.PI) / 180 : 0;
+    const yawRad =
+      skier.inAir || skier.onFeature ? (skier.yawDeg * Math.PI) / 180 : 0;
+    const bodyYaw = skier.onFeature ? yawRad : 0;
+    const bodyRot = bodyRotBase + bodyYaw;
+    const skiRot = skier.inAir ? bodyRotBase + yawRad : bodyRot;
     const pitchCos = skier.inAir ? Math.cos(pitchRad) : 1;
     const pitchSin = skier.inAir ? Math.sin(pitchRad) : 0;
     const tuckAmount = Math.abs(pitchSin); // 0..1
@@ -904,6 +1046,16 @@
     const scaleY = pitchCos || 0.001;
 
     const showBack = skier.inAir && pitchCos < 0;
+    // Switch stance applies the same "short tail in the direction of
+    // travel" ski flip in both air and ground. While airborne we read
+    // from `switchTakeoff` so that a switch takeoff starts with the
+    // flip and a 180° spin naturally cancels it (yaw rotates through
+    // π and the skis end up regular for a forward landing).
+    const stanceSwitch = skier.inAir
+      ? skier.switchTakeoff
+      : skier.onFeature
+        ? false
+        : skier.switch;
     const jacket = showBack ? "#173468" : "#2f62a6";
     const jacketEdge = showBack ? "#0f2546" : "#1b3f76";
     const ski = showBack ? "#a0392b" : "#d2523f";
@@ -917,9 +1069,14 @@
     // before the body, so it's hidden by the body fill); at yaw = 180°
     // the rotated tail pokes out in front of the body and the rotated
     // tip pokes out behind, reading as a clean switch stance.
+    //
+    // When riding switch on the ground we add π to the ski rotation only,
+    // so the long "tip" end points uphill and the short "tail" end sits
+    // in the direction of travel — the same asymmetry a spinning skier
+    // has as yaw crosses 180°. The body transform stays unchanged.
     ctx.save();
     ctx.translate(screenX, screenY);
-    ctx.rotate(-(bodyRot + yawRad) + brakeAdd);
+    ctx.rotate(-skiRot + brakeAdd + (stanceSwitch ? Math.PI : 0));
     ctx.scale(scaleX, scaleY);
     ctx.fillStyle = ski;
     const skiTail = -6.5; // behind the pivot (into the torso at yaw=0)
@@ -929,10 +1086,8 @@
     ctx.fillRect(1.6, skiTail, 1.5, skiLen);
     ctx.restore();
 
-    // Body + head — rotated by bodyRot only. The torso stays pointed in
-    // the direction of travel while the skis spin underneath. On the
-    // ground yawRad is 0 so the body and skis rotate together, preserving
-    // the existing ground-turn look.
+    // Body + head — on snow this stays aligned with travel. On rails we
+    // include yaw so the whole skier can face across or away from the rail.
     ctx.save();
     ctx.translate(screenX, screenY);
     ctx.rotate(-bodyRot + brakeAdd);
@@ -982,33 +1137,6 @@
     ctx.textBaseline = "top";
     ctx.restore();
 
-    if (skier && skier.inAir) {
-      const yawAbs = Math.round(Math.abs(skier.yawDeg) / 10) * 10;
-      const pitchAbs = Math.round(skier.pitchSpun / 10) * 10;
-      const airFt = Math.round((worldY - skier.airStartY) / 6);
-      const screenX = W / 2 + skier.x + 18;
-      const screenY = SKIER_SCREEN_Y - skier.altitude - 14;
-      ctx.save();
-      ctx.fillStyle = "rgba(40, 54, 58, 0.85)";
-      ctx.font =
-        '20px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      const lines = [];
-      if (yawAbs >= 180 && pitchAbs >= 180) {
-        lines.push(`${yawAbs}° + ${flipLiveName(pitchAbs, skier.pitchDir)}`);
-      } else if (yawAbs >= 180) {
-        lines.push(`${yawAbs}°`);
-      } else if (pitchAbs >= 180) {
-        lines.push(flipLiveName(pitchAbs, skier.pitchDir));
-      }
-      lines.push(`${airFt} ft`);
-      for (let i = lines.length - 1; i >= 0; i--) {
-        ctx.fillText(lines[i], screenX, screenY - (lines.length - 1 - i) * 22);
-      }
-      ctx.restore();
-    }
-
     if (trickTimer > 0 && lastTrick) {
       const a = clamp(trickTimer / 1.2, 0, 1);
       ctx.save();
@@ -1023,15 +1151,6 @@
     }
   }
 
-  function flipLiveName(deg, dir) {
-    const base = dir > 0 ? "frontflip" : "backflip";
-    if (deg >= 720) return `quadruple ${base}`;
-    if (deg >= 540) return `triple ${base}`;
-    if (deg >= 360) return `double ${base}`;
-    if (deg >= 180) return base;
-    return "";
-  }
-
   function draw() {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
@@ -1044,7 +1163,7 @@
       const sy = toScreenY(f.y);
       if (sy < -160 || sy > H + 160) continue;
       if (f.type === "kicker") drawKicker(f);
-      else if (f.type === "box") drawBox(f);
+      else if (f.type === "knuckle") drawKnuckle(f);
       else if (f.type === "rail") drawRail(f);
       else if (f.type === "tree") drawTree(f);
       else if (f.type === "gate") drawGate(f);
@@ -1161,13 +1280,7 @@
     isolation: isolate;
     padding: 1.25rem;
     color: #1b1615;
-    background:
-      radial-gradient(
-        900px 600px at 50% -10%,
-        rgba(210, 230, 225, 0.8) 0%,
-        rgba(210, 230, 225, 0) 60%
-      ),
-      linear-gradient(180deg, #f2f6f5 0%, #e6ecea 100%);
+    background: var(--surface);
     display: flex;
     flex-direction: column;
     outline: none;
