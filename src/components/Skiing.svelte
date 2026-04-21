@@ -626,28 +626,10 @@
   }
 
   function drawBackground() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, "#eef2f1");
-    g.addColorStop(SKIER_SCREEN_Y / H, "#fdfefe");
-    g.addColorStop(1, "#f4f7f6");
-    ctx.fillStyle = g;
+    ctx.fillStyle = "#fdfdfd";
     ctx.fillRect(0, 0, W, H);
 
     drawWallSpikes();
-
-    // Top fade (behind the skier dissolves into the sky).
-    const top = ctx.createLinearGradient(0, 0, 0, 140);
-    top.addColorStop(0, "rgba(234,240,239,0.9)");
-    top.addColorStop(1, "rgba(234,240,239,0)");
-    ctx.fillStyle = top;
-    ctx.fillRect(0, 0, W, 140);
-
-    // Bottom haze (distant horizon).
-    const bot = ctx.createLinearGradient(0, H * 0.75, 0, H);
-    bot.addColorStop(0, "rgba(255,255,255,0)");
-    bot.addColorStop(1, "rgba(255,255,255,0.5)");
-    ctx.fillStyle = bot;
-    ctx.fillRect(0, H * 0.75, W, H * 0.25);
   }
 
   function drawWallSpikes() {
@@ -685,16 +667,11 @@
       ctx.lineTo(outerEdge, -6);
       ctx.closePath();
 
-      // Fill — subtle gradient from the canvas edge to the piste lip.
-      const g = ctx.createLinearGradient(outerEdge, 0, tipX, 0);
-      g.addColorStop(0, "#d7dfdd");
-      g.addColorStop(0.75, "#dfe6e4");
-      g.addColorStop(1, "#e9eeec");
-      ctx.fillStyle = g;
+      ctx.fillStyle = "#e2e2e2";
       ctx.fill();
 
       // Crisp inner edge.
-      ctx.strokeStyle = "rgba(150, 168, 166, 0.55)";
+      ctx.strokeStyle = "rgba(160, 160, 160, 0.55)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       let firstStroke = true;
@@ -720,7 +697,7 @@
     if (trail.length < 2) return;
     ctx.save();
     ctx.translate(W / 2, 0);
-    ctx.strokeStyle = "rgba(100, 120, 120, 0.3)";
+    ctx.strokeStyle = "rgba(110, 110, 110, 0.3)";
     ctx.lineWidth = 1.1;
     ctx.lineCap = "round";
     for (const side of [-2, 2]) {
@@ -761,7 +738,7 @@
     const frontDepth = f.variant === "railApproach" ? 6 : 10;
 
     // Shadow on downhill side.
-    ctx.fillStyle = "rgba(58, 76, 80, 0.1)";
+    ctx.fillStyle = "rgba(60, 60, 60, 0.1)";
     ctx.beginPath();
     ctx.moveTo(-halfW + 3, frontDepth);
     ctx.lineTo(halfW + 3, frontDepth);
@@ -771,11 +748,11 @@
     ctx.fill();
 
     // Front face (small cliff drop below lip).
-    ctx.fillStyle = "#b7c6c3";
+    ctx.fillStyle = "#bfbfbf";
     ctx.fillRect(-halfW, 0, halfW * 2, frontDepth);
 
     // Top face (slightly tapered toward uphill).
-    ctx.fillStyle = "#edf1f0";
+    ctx.fillStyle = "#ededed";
     ctx.beginPath();
     ctx.moveTo(-halfW, 0);
     ctx.lineTo(halfW, 0);
@@ -783,7 +760,7 @@
     ctx.lineTo(-halfW * 0.88, -rampLen);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = "rgba(150, 168, 166, 0.65)";
+    ctx.strokeStyle = "rgba(160, 160, 160, 0.65)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -814,7 +791,7 @@
     const topHalfW = halfW * 0.9;
 
     // Shadow cast downhill of the output slope.
-    ctx.fillStyle = "rgba(58, 76, 80, 0.12)";
+    ctx.fillStyle = "rgba(60, 60, 60, 0.12)";
     ctx.beginPath();
     ctx.moveTo(-halfW * 0.55 + 4, halfLen + outSlope);
     ctx.lineTo(halfW * 0.55 + 4, halfLen + outSlope);
@@ -823,11 +800,7 @@
     ctx.closePath();
     ctx.fill();
 
-    // Output slope — soft gradient fading into the snow.
-    const outGrad = ctx.createLinearGradient(0, halfLen, 0, halfLen + outSlope);
-    outGrad.addColorStop(0, "#dde4e2");
-    outGrad.addColorStop(1, "rgba(239, 243, 242, 0)");
-    ctx.fillStyle = outGrad;
+    ctx.fillStyle = "#e0e0e0";
     ctx.beginPath();
     ctx.moveTo(-halfW, halfLen);
     ctx.lineTo(halfW, halfLen);
@@ -839,7 +812,7 @@
     // Uphill face — the short cliff that rises from the piste up to the
     // landing zone. Drawn above the top face in screen-y so the skier
     // sees it approaching.
-    ctx.fillStyle = "#b7c6c3";
+    ctx.fillStyle = "#bfbfbf";
     ctx.beginPath();
     ctx.moveTo(-topHalfW, -halfLen - lipHeight);
     ctx.lineTo(topHalfW, -halfLen - lipHeight);
@@ -847,19 +820,11 @@
     ctx.lineTo(-halfW, -halfLen);
     ctx.closePath();
     ctx.fill();
-    const faceGrad = ctx.createLinearGradient(
-      0,
-      -halfLen - lipHeight,
-      0,
-      -halfLen,
-    );
-    faceGrad.addColorStop(0, "rgba(0,0,0,0.04)");
-    faceGrad.addColorStop(1, "rgba(0,0,0,0.22)");
-    ctx.fillStyle = faceGrad;
+    ctx.fillStyle = "rgba(0,0,0,0.13)";
     ctx.fill();
 
     // Top face (the landing zone). Taper slightly toward the uphill lip.
-    ctx.fillStyle = "#eff3f2";
+    ctx.fillStyle = "#f0f0f0";
     ctx.beginPath();
     ctx.moveTo(-topHalfW, -halfLen);
     ctx.lineTo(topHalfW, -halfLen);
@@ -867,7 +832,7 @@
     ctx.lineTo(-halfW, halfLen);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = "rgba(150, 168, 166, 0.55)";
+    ctx.strokeStyle = "rgba(160, 160, 160, 0.55)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -896,7 +861,7 @@
     ctx.rotate(f.angle || 0);
 
     // Shadow under the rail (downhill side).
-    ctx.fillStyle = "rgba(58, 76, 80, 0.18)";
+    ctx.fillStyle = "rgba(60, 60, 60, 0.18)";
     ctx.beginPath();
     ctx.ellipse(4, 0, 8, halfLen, 0, 0, TAU);
     ctx.fill();
@@ -922,17 +887,17 @@
     const s = f.size || 20;
 
     // Shadow.
-    ctx.fillStyle = "rgba(58, 76, 80, 0.14)";
+    ctx.fillStyle = "rgba(60, 60, 60, 0.14)";
     ctx.beginPath();
     ctx.ellipse(s * 0.25, s * 0.85, s * 0.95, s * 0.3, 0, 0, TAU);
     ctx.fill();
 
     // Snow base.
-    ctx.fillStyle = "#f1f5f4";
+    ctx.fillStyle = "#f2f2f2";
     ctx.beginPath();
     ctx.ellipse(0, s * 0.7, s * 1.05, s * 0.34, 0, 0, TAU);
     ctx.fill();
-    ctx.strokeStyle = "rgba(180, 200, 198, 0.6)";
+    ctx.strokeStyle = "rgba(190, 190, 190, 0.6)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
@@ -985,7 +950,7 @@
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
-    ctx.fillStyle = "rgba(58, 76, 80, 0.22)";
+    ctx.fillStyle = "rgba(60, 60, 60, 0.22)";
     ctx.beginPath();
     ctx.ellipse(1.5, 1, 2.4, 0.9, 0, 0, TAU);
     ctx.fill();
@@ -1012,7 +977,7 @@
       ctx.save();
       const alt = skier.altitude;
       const t = clamp(1 - alt / 140, 0.35, 1);
-      ctx.fillStyle = `rgba(40, 54, 58, ${0.24 * t})`;
+      ctx.fillStyle = `rgba(50, 50, 50, ${0.24 * t})`;
       ctx.beginPath();
       ctx.ellipse(
         W / 2 + skier.x,
@@ -1116,7 +1081,7 @@
     if (!skier.inAir && skier.brakeAnim > 0.3 && skier.speed > 8) {
       ctx.save();
       ctx.translate(screenX, screenY + 6);
-      ctx.fillStyle = "rgba(230, 240, 238, 0.85)";
+      ctx.fillStyle = "rgba(235, 235, 235, 0.85)";
       for (let i = 0; i < 6; i++) {
         const a = (i - 2.5) * 0.25;
         const r = 3 + Math.random() * 3;
@@ -1130,7 +1095,7 @@
 
   function drawHud() {
     ctx.save();
-    ctx.fillStyle = "rgba(40, 54, 58, 0.85)";
+    ctx.fillStyle = "rgba(50, 50, 50, 0.85)";
     ctx.font =
       '600 14px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
     ctx.textAlign = "left";
@@ -1141,7 +1106,7 @@
       const a = clamp(trickTimer / 1.2, 0, 1);
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.fillStyle = "rgba(40, 54, 58, 0.9)";
+      ctx.fillStyle = "rgba(50, 50, 50, 0.9)";
       ctx.font =
         '28px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
       ctx.textAlign = "center";
@@ -1274,33 +1239,21 @@
     position: relative;
     border-radius: var(--radius-xl);
     overflow: hidden;
-    min-height: 520px;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border);
     isolation: isolate;
-    padding: 1.25rem;
     color: #1b1615;
-    background: var(--surface);
+    background: #fafafa;
     display: flex;
     flex-direction: column;
     outline: none;
-  }
-
-  .ski:focus-visible {
-    border-color: rgba(47, 125, 92, 0.55);
-    box-shadow:
-      var(--shadow-md),
-      0 0 0 3px rgba(47, 125, 92, 0.18);
   }
 
   .stage {
     position: relative;
     flex: 1;
     min-height: 0;
-    border-radius: var(--radius-md);
     overflow: hidden;
-    background: #fafbfa;
-    border: 1px solid rgba(180, 195, 192, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1309,8 +1262,7 @@
   canvas {
     display: block;
     width: 100%;
-    height: auto;
-    max-height: 100%;
+    height: 100%;
     aspect-ratio: 440 / 560;
     image-rendering: -webkit-optimize-contrast;
   }
@@ -1325,7 +1277,7 @@
     gap: 0.6rem;
     padding: 1.2rem;
     text-align: center;
-    background: rgba(250, 251, 250, 0.78);
+    background: rgba(250, 250, 250, 0.78);
     backdrop-filter: blur(4px) saturate(130%);
     -webkit-backdrop-filter: blur(4px) saturate(130%);
     color: #1b1615;
