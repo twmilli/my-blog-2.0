@@ -3,6 +3,7 @@
   export let error;
 
   const dev = process.env.NODE_ENV === "development";
+  $: message = error?.message || "Something went wrong.";
 </script>
 
 <style>
@@ -77,10 +78,10 @@
 <div class="wrap rise">
   <span class="badge">Error {status}</span>
   <h1>Well, that's awkward.</h1>
-  <p>{error.message}</p>
+  <p>{message}</p>
   <a href=".">Back home →</a>
 
-  {#if dev && error.stack}
+  {#if dev && error?.stack}
     <pre>{error.stack}</pre>
   {/if}
 </div>

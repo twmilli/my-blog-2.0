@@ -140,40 +140,29 @@
       <img src="about-ojai.png" alt="Taylor with a cocktail in an Adirondack chair in Ojai" />
     </figure>
     <p>
-      Before Figma I worked at Assembled and Thumbtack. Between jobs I
-      took a gap year at 17 with no idea what I wanted to do, and another
-      one in my twenties to cook, climb, and camp through places I
-      hadn't been.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+      consequat.
     </p>
     <p>
-      I got here a little sideways. I went to
-      <a href="https://www.bucknell.edu/" target="_blank" rel="noopener noreferrer">Bucknell</a>
-      for chemical engineering, fell hard for programming a year in, and spent the next
-      two years teaching myself the web on the side — north of a thousand hours on
-      <a href="https://www.freecodecamp.org/" target="_blank" rel="noopener noreferrer">freeCodeCamp</a>,
-      a research stint modeling solid oxide fuel cells, a summer interning at
-      <a href="https://www.braintreepayments.com/" target="_blank" rel="noopener noreferrer">Braintree</a>
-      in San Francisco, and a little freelance work for
-      <a href="https://giveth.io/" target="_blank" rel="noopener noreferrer">Giveth</a>
-      along the way. I graduated with a dual degree in ChemE and computer science, and
-      haven't looked back.
+      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+      dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+      proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
     </p>
     <figure class="photo photo--right">
       <img src="about-cabin.png" alt="Taylor reflected in a cabin window over rolling hills" />
     </figure>
     <p>
-      Before any of that, I spent college summers as an Assistant Hut Master with
-      the <a href="https://www.outdoors.org/" target="_blank" rel="noopener noreferrer">Appalachian Mountain Club</a>
-      and led pre-orientation backpacking trips for Bucknell's Buckwild program.
-      I'm a trained Wilderness First Responder, which mostly means I can patch
-      you up if something goes sideways at the crag.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+      consequat.
     </p>
     <p>
-      When I'm not at the bouldering gym or on a snowboard, you'll usually find
-      me cooking something ambitious for friends, tinkering at the piano, or
-      slowly publishing something here — I've been writing online on and off
-      since 2017, mostly short essays about building, creating vs. consuming,
-      and trying to stay present.
+      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+      dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+      proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
     </p>
   </div>
 </div>

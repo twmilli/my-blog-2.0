@@ -4,9 +4,12 @@ import commonjs from "rollup-plugin-commonjs";
 import svelte from "rollup-plugin-svelte";
 import babel from "rollup-plugin-babel";
 import { terser } from "rollup-plugin-terser";
+import { builtinModules, createRequire } from "node:module";
 import config from "sapper/config/rollup.js";
 import marked from "marked";
-import pkg from "./package.json";
+
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 
 const mode = process.env.NODE_ENV;
 const dev = mode === "development";
@@ -92,10 +95,7 @@ export default {
       commonjs(),
       markdown(),
     ],
-    external: Object.keys(pkg.dependencies).concat(
-      require("module").builtinModules ||
-        Object.keys(process.binding("natives"))
-    ),
+    external: Object.keys(pkg.dependencies).concat(builtinModules),
 
     onwarn,
   },

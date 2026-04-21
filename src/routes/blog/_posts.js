@@ -1,35 +1,114 @@
-const fs = require("fs");
-const path = require("path");
-const prism = require("prismjs");
-const marked = require("marked");
-const matter = require("gray-matter");
-const formatDate = require("date-fns/format");
-const readingTime = require("reading-time");
-
-// Support JSX syntax highlighting
-require("prismjs/components/prism-jsx.min");
+import fs from "node:fs";
+import path from "node:path";
+import prism from "prismjs";
+import marked from "marked";
+import matter from "gray-matter";
+import formatDate from "date-fns/format";
+import readingTime from "reading-time";
+import "prismjs/components/prism-jsx.min.js";
 
 const cwd = process.cwd();
 const POSTS_DIR = path.join(cwd, "src/routes/blog/posts/");
+const STATIC_DIR = path.join(cwd, "static");
 const EXCERPT_SEPARATOR = "<!-- more -->";
 const renderer = new marked.Renderer();
 const linkRenderer = renderer.link;
-renderer.link = (href, title, text) => {
-  const html = linkRenderer.call(renderer, href, title, text);
+const imageRenderer = renderer.image;
+const ABSOLUTE_PROTOCOL = /^[a-z][a-z\d+.-]*:/i;
+const DOMAIN_LIKE = /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/?#].*)?$/i;
 
-  if (href.indexOf("/") === 0) {
+function unwrapUrl(rawUrl = "") {
+  let url = rawUrl.trim();
+  let previous = "";
+
+  while (url !== previous) {
+    previous = url;
+    url = url
+      .replace(/^<+/, "")
+      .replace(/>+$/, "")
+      .replace(/^\(+/, "")
+      .replace(/\)+$/, "");
+  }
+
+  return url;
+}
+
+function normalizeLinkUrl(rawUrl = "") {
+  const url = unwrapUrl(rawUrl);
+
+  if (
+    !url ||
+    url.indexOf("/") === 0 ||
+    url.indexOf("./") === 0 ||
+    url.indexOf("../") === 0 ||
+    url.indexOf("#") === 0
+  ) {
+    return url;
+  }
+
+  if (url.indexOf("//") === 0) {
+    return `https:${url}`;
+  }
+
+  if (ABSOLUTE_PROTOCOL.test(url)) {
+    return url;
+  }
+
+  if (DOMAIN_LIKE.test(url)) {
+    return `https://${url}`;
+  }
+
+  return url;
+}
+
+function resolveImageUrl(rawUrl = "") {
+  const url = unwrapUrl(rawUrl);
+
+  if (!url) {
+    return null;
+  }
+
+  if (url.indexOf("/") === 0 || url.indexOf("//") === 0 || ABSOLUTE_PROTOCOL.test(url)) {
+    return url;
+  }
+
+  const normalized = url.replace(/^\.\//, "");
+  const staticPath = path.join(STATIC_DIR, normalized);
+
+  if (fs.existsSync(staticPath)) {
+    return `/${normalized}`;
+  }
+
+  return null;
+}
+
+renderer.link = (href, title, text) => {
+  const url = normalizeLinkUrl(href || "");
+  const html = linkRenderer.call(renderer, url, title, text);
+
+  if (url.indexOf("/") === 0) {
     // Do not open internal links on new tab
     return html;
-  } else if (href.indexOf("#") === 0) {
+  } else if (url.indexOf("#") === 0) {
     // Handle hash links to internal elements
     const html = linkRenderer.call(renderer, "javascript:;", title, text);
     return html.replace(
       /^<a /,
-      `<a onclick="document.location.hash='${href.substr(1)}';" `
+      `<a onclick="document.location.hash='${url.substr(1)}';" `
     );
   }
 
   return html.replace(/^<a /, '<a target="_blank" rel="nofollow" ');
+};
+
+renderer.image = (href, title, text) => {
+  const url = resolveImageUrl(href || "");
+
+  if (!url) {
+    return "";
+  }
+
+  return imageRenderer.call(renderer, url, title, text);
 };
 
 renderer.code = (code, language) => {

@@ -10,6 +10,7 @@
   import PostItem from "../components/PostItem.svelte";
   import Skiing from "../components/Skiing.svelte";
   import CurrentLocation from "../components/CurrentLocation.svelte";
+  import ListeningStatus from "../components/ListeningStatus.svelte";
 
   export let posts = [];
 
@@ -107,10 +108,35 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 500;
     color: inherit;
+  }
+
+  .caption-meta-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: inherit;
+  }
+
+  .currently {
+    color: inherit;
+  }
+
+  .caption-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    text-align: right;
   }
 
   /* Section */
@@ -166,9 +192,12 @@
         Taylor is a software builder, climber, and life-enjoyer
         based in San Francisco.
       </p>
-      <div class="caption-meta">
-        <span>Currently: AI @ Figma</span>
-        <CurrentLocation />
+      <div class="caption-meta-block">
+        <span class="currently">Currently: AI @ Figma</span>
+        <div class="caption-right">
+          <ListeningStatus />
+          <CurrentLocation />
+        </div>
       </div>
     </div>
   </div>

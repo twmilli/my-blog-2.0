@@ -21,6 +21,15 @@
   let lastTrick = "";
   let trickTimer = 0;
 
+  // TEMP: tunable mixture knobs for feature spawning. `jumpChance` and
+  // `railChance` are probabilities in [0, 1]. The remainder fills with
+  // trees/gates proportionally. Backed by integer percentages so the
+  // range inputs below can bind and display whole numbers.
+  let jumpPct = 38;
+  let railPct = 14;
+  $: jumpChance = jumpPct / 100;
+  $: railChance = Math.min(railPct, 100 - jumpPct) / 100;
+
   let skier;
   let worldY;
   let features;
@@ -91,10 +100,19 @@
 
   function spawnFeatures() {
     const ahead = worldY + H * 2.2;
+    // Thresholds derived from the tunable knobs. The remaining probability
+    // (1 - jumpChance - railChance) splits across trees / gates / clusters
+    // using the original ~0.18 / 0.16 / 0.14 proportions.
+    const jumpT = clamp(jumpChance, 0, 1);
+    const railT = jumpT + clamp(railChance, 0, 1 - jumpT);
+    const restSpan = Math.max(0, 1 - railT);
+    const treeT = railT + restSpan * (0.18 / 0.48);
+    const gateT = railT + restSpan * ((0.18 + 0.16) / 0.48);
+
     while (nextFeatureY < ahead) {
       const roll = Math.random();
       const cx = rand(-SLOPE_HALF + 40, SLOPE_HALF - 40);
-      if (roll < 0.38) {
+      if (roll < jumpT) {
         // Kicker + paired knuckle landing zone. The kicker is the launch
         // ramp only; the knuckle is a separate mound placed so the
         // ballistic arc reliably lands on its top face.
@@ -124,22 +142,33 @@
           pairedKickerId: kickerId,
         });
         nextFeatureY += gap + topLen + outSlope + rand(180, 240);
-      } else if (roll < 0.52) {
+      } else if (roll < railT) {
         // Rail — always paired with a small approach kicker. The kicker is
         // a real kicker under the hood (shares physics with the big
         // kicker + knuckle pair) but is tiny and low-powered so the
         // ballistic arc lands the skier on the rail rather than over it.
+        //
+        // The kicker inherits the rail's angle and is positioned along the
+        // rail's axis — a `gap` uphill of the rail's uphill end — so the
+        // lip, the launch direction, and the bar all read as a single
+        // straight line instead of an axis-aligned hump next to a diagonal
+        // bar. The kicker's launch redirects `airHeading` onto that same
+        // axis so the ballistic arc actually tracks down the rail.
         const railKickerId = ++_featureId;
         const railId = railKickerId + 1;
         const gap = rand(18, 26);
         const len = rand(70, 110);
         const angle = rand(-0.28, 0.28);
+        const railCenterX = cx;
+        const railCenterY = nextFeatureY + gap + len / 2;
+        const kickerOffset = len / 2 + gap;
         features.push({
           id: railKickerId,
           type: "kicker",
           variant: "railApproach",
-          x: cx,
-          y: nextFeatureY,
+          x: railCenterX + Math.sin(angle) * kickerOffset,
+          y: railCenterY - Math.cos(angle) * kickerOffset,
+          angle,
           w: rand(38, 50),
           rampLen: rand(22, 30),
           power: rand(95, 120),
@@ -148,15 +177,15 @@
         features.push({
           id: ++_featureId,
           type: "rail",
-          x: cx,
-          y: nextFeatureY + gap + len / 2,
+          x: railCenterX,
+          y: railCenterY,
           len,
           angle,
           height: 6,
           pairedKickerId: railKickerId,
         });
         nextFeatureY += gap + len + rand(130, 200);
-      } else if (roll < 0.7) {
+      } else if (roll < treeT) {
         // Tree: side only
         const side = Math.random() < 0.5 ? -1 : 1;
         features.push({
@@ -167,7 +196,7 @@
           size: rand(18, 26),
         });
         nextFeatureY += rand(30, 70);
-      } else if (roll < 0.86) {
+      } else if (roll < gateT) {
         // Gate (orange pole)
         const pair = Math.random() < 0.45;
         features.push({
@@ -298,8 +327,8 @@
         ) {
           skier.inAir = true;
           // Small speed-scaled pop off the end — a gentle ollie rather
-          // than a real jump.
-          skier.vz = 18 + skier.speed * 0.22;
+          // than a real jump, just with a touch more lift.
+          skier.vz = 20 + skier.speed * 0.24;
           skier.altitude = 0;
           skier.airStartY = worldY;
           skier.airHeading = travelHeading;
@@ -462,10 +491,22 @@
       const dx = f.x - skier.x;
 
       if (f.type === "kicker") {
-        const dy = f.y - worldY;
-        if (Math.abs(dy) > 28) continue;
+        // Hit-zone is expressed in the kicker's local frame so an angled
+        // kicker keeps its footprint aligned with the ramp — the uphill
+        // face stays uphill along the kicker's axis, not along world y.
+        // localDy increases as the skier moves downhill along that axis,
+        // so the trigger window is (−10 uphill of the lip, +8 downhill
+        // of it), matching the original axis-aligned tolerance.
+        const angle = f.angle || 0;
+        const ox = skier.x - f.x;
+        const oy = worldY - f.y;
+        const cos = Math.cos(-angle);
+        const sin = Math.sin(-angle);
+        const localDx = ox * cos - oy * sin;
+        const localDy = ox * sin + oy * cos;
+        if (Math.abs(localDy) > 28) continue;
         const halfW = f.w / 2;
-        if (Math.abs(dx) < halfW && dy > -8 && dy < 10) {
+        if (Math.abs(localDx) < halfW && localDy > -10 && localDy < 8) {
           launch(f, f.power);
           skier.airSource = "kicker";
           return;
@@ -530,7 +571,16 @@
     // speed range so the paired knuckle lands the skier reliably.
     skier.vz = power + skier.speed * 0.05;
     skier.airStartY = worldY;
-    skier.airHeading = skier.heading;
+    // Angled kickers redirect the takeoff onto the kicker's axis so the
+    // ballistic arc tracks straight down whatever the kicker is pointing
+    // at (e.g. a diagonal rail). The kicker draw/rail-physics angle is
+    // negated here because ctx.rotate uses the canvas (y-down) convention
+    // where the rail's downhill direction is (−sin(a), cos(a)), while
+    // the skier's heading moves (sin(h), cos(h)) per unit time — so a
+    // rail angle of +a corresponds to a takeoff heading of −a. Regular
+    // axis-aligned kickers have no angle set and preserve the skier's
+    // heading as before.
+    skier.airHeading = f.angle != null ? -f.angle : skier.heading;
     skier.pitchDir = 0;
     skier.switchTakeoff = skier.switch;
   }
@@ -730,6 +780,7 @@
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
+    ctx.rotate(f.angle || 0);
 
     const halfW = f.w / 2;
     const rampLen = f.rampLen;
@@ -1219,6 +1270,35 @@
 </svelte:head>
 
 <div class="ski" bind:this={wrapEl} tabindex="0" on:click={() => wrapEl.focus()}>
+  <!-- TEMP: mixture knobs for tuning feature spawn ratios. Remove once
+       the balance is dialed in. -->
+  <div class="knobs" on:click|stopPropagation>
+    <label>
+      <span class="knob-label">Jumps</span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        bind:value={jumpPct}
+        aria-label="Jump frequency percent"
+      />
+      <span class="knob-val">{jumpPct}%</span>
+    </label>
+    <label>
+      <span class="knob-label">Rails</span>
+      <input
+        type="range"
+        min="0"
+        max={100 - jumpPct}
+        step="1"
+        bind:value={railPct}
+        aria-label="Rail frequency percent"
+      />
+      <span class="knob-val">{Math.min(railPct, 100 - jumpPct)}%</span>
+    </label>
+  </div>
+
   <div class="stage">
     <canvas bind:this={canvas} aria-label="Skiing game"></canvas>
 
@@ -1247,6 +1327,39 @@
     display: flex;
     flex-direction: column;
     outline: none;
+  }
+
+  .knobs {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    background: #f2f2f2;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: #3a3a3a;
+  }
+  .knobs label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .knobs input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    accent-color: #28363a;
+    cursor: pointer;
+  }
+  .knob-label {
+    font-weight: 600;
+  }
+  .knob-val {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5em;
+    text-align: right;
+    color: #6b6b6b;
   }
 
   .stage {

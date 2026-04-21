@@ -3,6 +3,9 @@
   "functions": {
     "api/location.js": {
       "maxDuration": 10
+    },
+    "api/spotify.js": {
+      "maxDuration": 10
     }
   }
 }

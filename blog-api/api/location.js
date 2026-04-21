@@ -1,28 +1,18 @@
 import { kv } from "@vercel/kv";
 
 const KV_KEY = "location:latest";
-// ~1km precision at mid-latitudes — we only display city-level anyway.
+// ~1km precision at mid-latitudes - we only display city-level anyway.
 const COORD_PRECISION = 2;
-// Where GET responses are allowed to be read from.
-const ALLOWED_ORIGINS = [
-  "https://taylormilliman.me",
-  "https://www.taylormilliman.me",
-  "http://localhost:3000",
-];
+
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+}
 
 function round(n, digits) {
   const f = 10 ** digits;
   return Math.round(n * f) / f;
-}
-
-function corsHeaders(origin) {
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    Vary: "Origin",
-  };
 }
 
 async function reverseGeocode(lat, lng) {
@@ -31,8 +21,16 @@ async function reverseGeocode(lat, lng) {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return null;
     const data = await res.json();
-    const neighborhood = data.locality || data.localityInfo?.administrative?.find((a) => a.order >= 6)?.name || null;
-    const city = data.city || data.localityInfo?.administrative?.find((a) => a.adminLevel === 5 || a.adminLevel === 6)?.name || null;
+    const neighborhood =
+      data.locality ||
+      data.localityInfo?.administrative?.find((a) => a.order >= 6)?.name ||
+      null;
+    const city =
+      data.city ||
+      data.localityInfo?.administrative?.find(
+        (a) => a.adminLevel === 5 || a.adminLevel === 6,
+      )?.name ||
+      null;
     const region = data.principalSubdivision || null;
     const country = data.countryName || null;
 
@@ -69,9 +67,7 @@ function pickNewest(locations) {
 }
 
 export default async function handler(req, res) {
-  const origin = req.headers.origin || "";
-  const cors = corsHeaders(origin);
-  for (const [k, v] of Object.entries(cors)) res.setHeader(k, v);
+  setCorsHeaders(res);
 
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -85,6 +81,7 @@ export default async function handler(req, res) {
       res.status(200).json({ label: null, timestamp: null, receivedAt: null });
       return;
     }
+
     res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60");
     res.status(200).json({
       label: record.label,
@@ -105,7 +102,9 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const newest = pickNewest(body.locations);
     if (!newest) {
-      res.status(200).json({ result: "ok", stored: false, reason: "no locations" });
+      res
+        .status(200)
+        .json({ result: "ok", stored: false, reason: "no locations" });
       return;
     }
 
@@ -114,9 +113,10 @@ export default async function handler(req, res) {
       res.status(400).json({ error: "invalid coordinates" });
       return;
     }
-    const [lng, lat] = coords;
-    const timestamp = newest.properties?.timestamp || new Date().toISOString();
 
+    const [lng, lat] = coords;
+    const timestamp =
+      newest.properties?.timestamp || new Date().toISOString();
     const geo = await reverseGeocode(lat, lng);
 
     const record = {

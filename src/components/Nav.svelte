@@ -241,12 +241,6 @@
   <div class="cluster">
     <a
       class="pill"
-      aria-current={segment === undefined ? 'page' : undefined}
-      href=".">
-      Home
-    </a>
-    <a
-      class="pill"
       aria-current={segment === 'blog' ? 'page' : undefined}
       rel="prefetch"
       href="blog">
