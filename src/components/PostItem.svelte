@@ -30,17 +30,6 @@
     letter-spacing: 0.08em;
   }
 
-  .meta .tag {
-    padding: 0.15rem 0.55rem;
-    border-radius: 999px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-  }
-
   h3 {
     font-family: var(--font-serif);
     font-size: clamp(1.3rem, 2vw, 1.65rem);
@@ -84,9 +73,6 @@
   <div>
     <div class="meta">
       <span>{post.printDate}</span>
-      {#if post.tag}
-        <span class="tag">{post.tag}</span>
-      {/if}
     </div>
     <h3>{post.title}</h3>
     {#if post.excerpt}

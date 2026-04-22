@@ -20,21 +20,6 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
 
-    <script>
-      // Apply saved theme before first paint to avoid flash.
-      (function () {
-        try {
-          var temp = localStorage.getItem("tay_themeStore");
-          var parsed = temp ? JSON.parse(temp) : null;
-          var name = parsed && parsed.name === "dark" ? "dark" : "light";
-
-          document.documentElement.setAttribute("data-theme", name);
-        } catch (e) {
-          document.documentElement.setAttribute("data-theme", "light");
-        }
-      })();
-    </script>
-
     %sapper.styles%
 
     %sapper.head%

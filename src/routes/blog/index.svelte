@@ -30,15 +30,8 @@
   .head h1 {
     font-family: var(--font-serif);
     font-size: clamp(2.4rem, 4vw, 3.4rem);
-    margin: 0 0 0.5rem;
-    letter-spacing: -0.025em;
-  }
-
-  .head p {
-    font-size: 1.1rem;
-    color: var(--text-muted);
-    max-width: 48ch;
     margin: 0;
+    letter-spacing: -0.025em;
   }
 
   .grid {
@@ -61,7 +54,6 @@
 <div class="head rise">
   <div class="eyebrow">Writing</div>
   <h1>Essays, notes, and half-baked ideas.</h1>
-  <p>Things I'm thinking about — software, food, how to live.</p>
 </div>
 
 <div class="grid rise-stagger">

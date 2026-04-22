@@ -66,10 +66,6 @@
     yawDeg: number;
     yawSpeed: number;
     yawSpun: number;
-    pitchDeg: number;
-    pitchSpeed: number;
-    pitchSpun: number;
-    pitchDir: number;
     switch: boolean;
     switchTakeoff: boolean;
     grindSpun?: number;
@@ -91,9 +87,10 @@
   const SKIER_SCREEN_Y = Math.round(H * 0.3);
   const SLOPE_HALF = 150;
   const RAIL_HEIGHT = 6;
+  /** Rail-local ±x bound: same value for grind stay vs air catch so pops cannot instantly re-lock. */
+  const RAIL_LATERAL_HALF_WIDTH = 6;
 
   const TAU = Math.PI * 2;
-  const RAD2DEG = 180 / Math.PI;
 
   let canvas!: HTMLCanvasElement;
   let wrapEl!: HTMLDivElement;
@@ -156,12 +153,6 @@
       yawDeg: 0,
       yawSpeed: 0,
       yawSpun: 0,
-
-      // Pitch (flip)
-      pitchDeg: 0,
-      pitchSpeed: 0,
-      pitchSpun: 0,
-      pitchDir: 0,
 
       // Switch stance
       switch: false,
@@ -334,7 +325,6 @@
     if (state !== "playing") return;
 
     const steer = (keys.ArrowLeft ? -1 : 0) + (keys.ArrowRight ? 1 : 0);
-    const pitchIn = (keys.ArrowUp ? 1 : 0) + (keys.ArrowDown ? -1 : 0);
 
     if (skier.inAir) {
       // ---- AIR ----------------------------------------------------------
@@ -346,16 +336,6 @@
       skier.yawSpeed *= Math.pow(0.985, dt * 60);
       skier.yawDeg += skier.yawSpeed * dt;
       skier.yawSpun += Math.abs(skier.yawSpeed) * dt;
-
-      // Pitch (flip)
-      skier.pitchSpeed += pitchIn * 720 * dt;
-      skier.pitchSpeed = clamp(skier.pitchSpeed, -720, 720);
-      skier.pitchSpeed *= Math.pow(0.985, dt * 60);
-      skier.pitchDeg += skier.pitchSpeed * dt;
-      skier.pitchSpun += Math.abs(skier.pitchSpeed) * dt;
-      if (pitchIn !== 0) skier.pitchDir = pitchIn;
-      else if (skier.pitchSpeed !== 0 && skier.pitchDir === 0)
-        skier.pitchDir = Math.sign(skier.pitchSpeed);
 
       // Ballistic arc — lower gravity + lower initial vz means jumps feel
       // more like a glide than a catapult.
@@ -406,7 +386,7 @@
         // usable footprint, either by running off the end or sliding off
         // the side.
         if (
-          Math.abs(localDx) > 5 ||
+          Math.abs(localDx) > RAIL_LATERAL_HALF_WIDTH ||
           localDy < -f.len / 2 ||
           localDy > f.len / 2
         ) {
@@ -418,7 +398,6 @@
           skier.airStartY = worldY;
           skier.airHeading = travelHeading;
           skier.airSource = f.type;
-          skier.pitchDir = 0;
           skier.switchTakeoff = skier.switch;
           skier.grindFeet = Math.round(Math.max(0, localDy + f.len / 2) / 6);
           skier.onFeature = null;
@@ -512,10 +491,6 @@
     skier.yawSpeed = 0;
     skier.yawDeg = 0;
     skier.yawSpun = 0;
-    skier.pitchSpeed = 0;
-    skier.pitchDeg = 0;
-    skier.pitchSpun = 0;
-    skier.pitchDir = 0;
     skier.airSource = null;
     skier.switchTakeoff = false;
     skier.grindSpun = 0;
@@ -526,26 +501,13 @@
   }
 
   function mountRailFromAir(f: RailFeature): boolean {
-    const pitchResMod = mod(skier.pitchDeg, 180);
-    const pitchAligned = pitchResMod < 45 || pitchResMod > 135;
-
-    if (!pitchAligned) {
-      crashFromAir();
-      return true;
-    }
-
     skier.altitude = 6;
     skier.inAir = false;
     skier.vz = 0;
     skier.onFeature = f.id;
     skier.heading = skier.airHeading;
     // Rail catches preserve yaw so the skier can land sideways and keep
-    // spinning, but pitching has to settle immediately onto the feature.
-    // Importantly, the catch does not nudge x/y or re-aim the trajectory.
-    skier.pitchSpeed = 0;
-    skier.pitchDeg = 0;
-    skier.pitchSpun = 0;
-    skier.pitchDir = 0;
+    // spinning. The catch does not nudge x/y or re-aim the trajectory.
     skier.grindFeet = 0;
     skier.grindSpun = 0;
     return true;
@@ -566,7 +528,10 @@
       const descending = skier.vz <= 0;
       const catchHeight = 6 + (f.height || 0);
       if (!descending || skier.altitude >= catchHeight) continue;
-      if (Math.abs(localDx) < 8 && Math.abs(localDy) < f.len / 2) {
+      if (
+        Math.abs(localDx) < RAIL_LATERAL_HALF_WIDTH &&
+        Math.abs(localDy) < f.len / 2
+      ) {
         return mountRailFromAir(f);
       }
     }
@@ -613,7 +578,6 @@
           skier.airStartY = worldY;
           skier.airHeading = skier.heading;
           skier.airSource = "knuckle";
-          skier.pitchDir = 0;
           return;
         }
       } else if (f.type === "rail") {
@@ -669,7 +633,6 @@
         : f.angle != null
           ? -f.angle
           : skier.heading;
-    skier.pitchDir = 0;
     skier.switchTakeoff = skier.switch;
   }
 
@@ -677,22 +640,17 @@
     skier.altitude = 0;
 
     const yawResMod = mod(skier.yawDeg, 180);
-    const pitchResMod = mod(skier.pitchDeg, 180);
     const yawAligned = yawResMod < 45 || yawResMod > 135;
-    const pitchAligned = pitchResMod < 45 || pitchResMod > 135;
 
     const yawRounded = Math.round(Math.abs(skier.yawDeg) / 90) * 90;
-    const pitchRoundedAbs = Math.round(skier.pitchSpun / 180) * 180;
     const airFeet = Math.round((worldY - skier.airStartY) / 6);
 
-    if (yawAligned && pitchAligned) {
+    if (yawAligned) {
       const grindFeet = skier.grindFeet || 0;
       const halfTurns = Math.round(skier.yawDeg / 180);
       if (halfTurns % 2 !== 0) skier.switch = !skier.switch;
       lastTrick = nameTrick(
         yawRounded,
-        pitchRoundedAbs,
-        skier.pitchDir,
         airFeet,
         skier.airSource,
         grindFeet,
@@ -709,10 +667,6 @@
     skier.yawSpeed = 0;
     skier.yawDeg = 0;
     skier.yawSpun = 0;
-    skier.pitchSpeed = 0;
-    skier.pitchDeg = 0;
-    skier.pitchSpun = 0;
-    skier.pitchDir = 0;
     skier.airSource = null;
     skier.switchTakeoff = false;
     skier.grindSpun = 0;
@@ -721,20 +675,8 @@
 
   // --- Trick naming --------------------------------------------------------
 
-  function flipName(deg: number, dir: number): string {
-    const base = dir > 0 ? "frontflip" : "backflip";
-    if (deg >= 900) return `quintuple ${base}`;
-    if (deg >= 720) return `quadruple ${base}`;
-    if (deg >= 540) return `triple ${base}`;
-    if (deg >= 360) return `double ${base}`;
-    if (deg >= 180) return base;
-    return "";
-  }
-
   function nameTrick(
     yawDeg: number,
-    pitchDeg: number,
-    pitchDir: number,
     feet: number,
     source: AirSource,
     grindFeet: number,
@@ -744,8 +686,6 @@
     if (source === "rail" && grindFeet > 0)
       parts.push(`rail slide ${grindFeet}ft`);
     if (yawDeg >= 180) parts.push(`${yawDeg}°`);
-    const fn = flipName(pitchDeg, pitchDir || 1);
-    if (fn) parts.push(fn);
     if (parts.length === 0) {
       if (isSwitch) return feet >= 12 ? `zero spin · ${feet} ft` : "zero spin";
       if (feet >= 12) return `${feet} ft air`;
@@ -1146,33 +1086,24 @@
     // continuing spins read clearly without the rail re-aiming the skier.
     const bodyRotBase = skier.inAir ? skier.airHeading : skier.heading;
     const brakeAdd = !skier.inAir ? skier.brakeAnim * (Math.PI / 2) : 0;
-    const pitchRad = skier.pitchDeg / RAD2DEG || 0;
     const yawRad =
       skier.inAir || skier.onFeature ? (skier.yawDeg * Math.PI) / 180 : 0;
     const bodyYaw = skier.onFeature ? yawRad : 0;
     const bodyRot = bodyRotBase + bodyYaw;
     const skiRot = skier.inAir ? bodyRotBase + yawRad : bodyRot;
-    const pitchCos = skier.inAir ? Math.cos(pitchRad) : 1;
-    const pitchSin = skier.inAir ? Math.sin(pitchRad) : 0;
-    const tuckAmount = Math.abs(pitchSin); // 0..1
-    const scaleX = 1 - 0.62 * tuckAmount;
-    const scaleY = pitchCos || 0.001;
 
-    const showBack = skier.inAir && pitchCos < 0;
-    // Switch stance applies the same "short tail in the direction of
-    // travel" ski flip in both air and ground. While airborne we read
-    // from `switchTakeoff` so that a switch takeoff starts with the
-    // flip and a 180° spin naturally cancels it (yaw rotates through
-    // π and the skis end up regular for a forward landing).
+    // Switch stance: short tail in the direction of travel. While airborne
+    // we read from `switchTakeoff` so a switch takeoff starts reversed and
+    // a 180° spin cancels it (yaw crosses π for a forward landing).
     const stanceSwitch = skier.inAir
       ? skier.switchTakeoff
       : skier.onFeature
         ? false
         : skier.switch;
-    const jacket = showBack ? "#173468" : "#2f62a6";
-    const jacketEdge = showBack ? "#0f2546" : "#1b3f76";
-    const ski = showBack ? "#a0392b" : "#d2523f";
-    const head = showBack ? "#b68966" : "#e3b187";
+    const jacket = "#2f62a6";
+    const jacketEdge = "#1b3f76";
+    const ski = "#d2523f";
+    const head = "#e3b187";
 
     // Skis — rotated by bodyRot + yaw so they sweep around during a 360.
     // Each ski extends both ahead of and behind the skier's pivot (tip
@@ -1190,7 +1121,6 @@
     ctx.save();
     ctx.translate(screenX, screenY);
     ctx.rotate(-skiRot + brakeAdd + (stanceSwitch ? Math.PI : 0));
-    ctx.scale(scaleX, scaleY);
     ctx.fillStyle = ski;
     const skiTail = -6.5; // behind the pivot (into the torso at yaw=0)
     const skiTip = 8.7; //  ahead of the pivot
@@ -1204,7 +1134,6 @@
     ctx.save();
     ctx.translate(screenX, screenY);
     ctx.rotate(-bodyRot + brakeAdd);
-    ctx.scale(scaleX, scaleY);
 
     ctx.fillStyle = jacket;
     ctx.beginPath();

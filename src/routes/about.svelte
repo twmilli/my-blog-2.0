@@ -1,6 +1,60 @@
 <script>
 </script>
 
+<svelte:head>
+  <title>About — Taylor Milliman</title>
+</svelte:head>
+
+<div class="about-wrap rise">
+  <div class="eyebrow">About</div>
+  <h1>Hi, I'm Taylor.</h1>
+
+  <div class="about-body">
+    <div class="prose">
+      <p>
+        I'm a software engineer, maker, climber, backgammon enthusiast, and life
+        enjoyer in San Francisco.
+      </p>
+      <p>
+        These days I'm working on
+        <a
+          href="https://www.figma.com/"
+          target="_blank"
+          rel="noopener noreferrer">AI at Figma</a
+        >, building tools that help designers and engineers collaborate with
+        models.
+      </p>
+      <p>
+        In the past, I've written about <a
+          href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48"
+          target="_blank"
+          rel="noopener noreferrer">breaking into tech</a
+        >,
+        <a
+          href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48"
+          target="_blank"
+          rel="noopener noreferrer">making a smitten kitchen mobile app</a
+        >, and <a href="blog/2-months-without-a-phone">giving up my phone</a>.
+      </p>
+      <p>
+        I get excited about projects that combine software engineering, design,
+        product thinking, and intense collaboration. I believe in play,
+        creativity, deliberate practice, and touching grass.
+      </p>
+      <p>
+        I'm not quite sure where the next few years will take me, but I hope to
+        keep building, keep learning, and stay curious along the way.
+      </p>
+    </div>
+    <figure class="photo">
+      <img
+        src="about-cabin.png"
+        alt="Taylor reflected in a cabin window over rolling hills"
+      />
+    </figure>
+  </div>
+</div>
+
 <style>
   .about-wrap {
     max-width: 56rem;
@@ -25,16 +79,25 @@
     max-width: 18ch;
   }
 
-  .prose::after {
-    content: "";
-    display: block;
-    clear: both;
+  .about-body {
+    display: grid;
+    grid-template-columns: 1fr minmax(15rem, 40%);
+    gap: 2rem 2.5rem;
+    align-items: start;
+  }
+
+  .prose {
+    min-width: 0;
   }
 
   .prose p {
     font-size: 1.1rem;
     color: var(--text);
     line-height: 1.7;
+  }
+
+  .prose p:first-child {
+    margin-top: 0;
   }
 
   .prose a {
@@ -49,7 +112,8 @@
     text-decoration: none;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
-    transition: background-size var(--dur-3) var(--ease-out-soft),
+    transition:
+      background-size var(--dur-3) var(--ease-out-soft),
       color var(--dur-2) var(--ease-out-soft);
   }
 
@@ -64,22 +128,10 @@
     border: 1px solid var(--border);
     box-shadow: var(--shadow-md);
     aspect-ratio: 4 / 5;
-    width: 20rem;
-    max-width: 50%;
-    margin: 0.4rem 0 1.75rem;
+    width: 100%;
+    max-width: none;
+    margin: 0;
     transition: transform var(--dur-3) var(--ease-out-soft);
-  }
-
-  .photo--right {
-    float: right;
-    clear: both;
-    margin-left: 2rem;
-  }
-
-  .photo--left {
-    float: left;
-    clear: both;
-    margin-right: 2rem;
   }
 
   .photo:hover {
@@ -94,75 +146,13 @@
   }
 
   @media (max-width: 720px) {
-    .photo,
-    .photo--right,
-    .photo--left {
-      float: none;
-      width: 100%;
-      max-width: 100%;
-      margin: 1.5rem 0;
+    .about-body {
+      grid-template-columns: 1fr;
+    }
+
+    .photo {
+      max-width: 22rem;
+      margin: 0.5rem auto 0;
     }
   }
-
 </style>
-
-<svelte:head>
-  <title>About — Taylor Milliman</title>
-</svelte:head>
-
-<div class="about-wrap rise">
-  <div class="eyebrow">About</div>
-  <h1>Hi, I'm Taylor.</h1>
-
-  <div class="prose">
-    <figure class="photo photo--right">
-      <img src="about-climbing.png" alt="Taylor bouldering with a dog on the crash pad" />
-    </figure>
-    <p>
-      I'm a software engineer, maker, climber, backgammon enthusiast, and life enjoyer in San
-      Francisco.
-    </p>
-    <p>
-      These days I'm working on
-      <a href="https://www.figma.com/" target="_blank" rel="noopener noreferrer">AI at Figma</a>, building tools that help designers and engineers
-      collaborate with models.
-    </p>
-    <p>
-      In the past, I've written about <a
-        href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48"
-        target="_blank"
-        rel="noopener noreferrer">breaking into tech</a>, <a
-        href="https://medium.com/free-code-camp/how-doing-something-i-love-landed-me-a-top-tier-tech-internship-fe78d8b74e48"
-        target="_blank"
-        rel="noopener noreferrer">making a smitten kitchen mobile app</a>, and <a href="blog/2-months-without-a-phone">giving up my phone</a>.
-    </p>
-    <figure class="photo photo--left">
-      <img src="about-ojai.png" alt="Taylor with a cocktail in an Adirondack chair in Ojai" />
-    </figure>
-    <p>
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-      consequat.
-    </p>
-    <p>
-      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
-      dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
-      proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-    </p>
-    <figure class="photo photo--right">
-      <img src="about-cabin.png" alt="Taylor reflected in a cabin window over rolling hills" />
-    </figure>
-    <p>
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-      consequat.
-    </p>
-    <p>
-      Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
-      dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
-      proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-    </p>
-  </div>
-</div>
