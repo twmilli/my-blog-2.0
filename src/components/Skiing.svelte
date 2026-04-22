@@ -1337,11 +1337,25 @@
 
     {#if state === "idle"}
       <div class="overlay">
-        <button class="btn" on:click={resetGame}>Drop in</button>
+        <button class="pill drop-in" type="button" on:click={resetGame}>
+          <span class="drop-in__snow" aria-hidden="true">
+            <span class="drop-in__layer drop-in__layer--1"></span>
+            <span class="drop-in__layer drop-in__layer--2"></span>
+            <span class="drop-in__layer drop-in__layer--3"></span>
+          </span>
+          <span class="drop-in__label">Drop in</span>
+        </button>
       </div>
     {:else if state === "crashed"}
       <div class="overlay">
-        <button class="btn" on:click={resetGame}>Drop in</button>
+        <button class="pill drop-in" type="button" on:click={resetGame}>
+          <span class="drop-in__snow" aria-hidden="true">
+            <span class="drop-in__layer drop-in__layer--1"></span>
+            <span class="drop-in__layer drop-in__layer--2"></span>
+            <span class="drop-in__layer drop-in__layer--3"></span>
+          </span>
+          <span class="drop-in__label">Drop in</span>
+        </button>
       </div>
     {/if}
   </div>
@@ -1428,30 +1442,169 @@
     -webkit-backdrop-filter: blur(4px) saturate(130%);
     color: #1b1615;
   }
-  .btn {
+  /* .pill from global.css: padding, radius, type. Border/shadow toggled off here. */
+  .drop-in {
+    --drop-in-surface: rgba(92, 90, 87, 0.66);
+    --drop-in-surface-hover: rgba(79, 77, 74, 0.8);
+    position: relative;
+    z-index: 0;
     align-self: center;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.65rem 1.1rem;
-    border-radius: 999px;
-    background: #28363a;
-    color: #fdfbf6;
-    font-family: var(--font-sans);
-    font-weight: 500;
-    font-size: 0.92rem;
-    text-decoration: none;
-    border: 1px solid #28363a;
-    box-shadow: 0 6px 16px rgba(40, 54, 58, 0.18);
-    cursor: pointer;
+    overflow: hidden;
+    isolation: isolate;
+    border: none;
+    box-shadow: none;
+    /* omit box-shadow from transition (see global .pill:hover) */
     transition:
       transform var(--dur-2) var(--ease-out-soft),
-      box-shadow var(--dur-2) var(--ease-out-soft),
-      background var(--dur-2) var(--ease-out-soft);
+      background var(--dur-2) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
+    background: var(--drop-in-surface);
+    backdrop-filter: blur(12px) saturate(130%);
+    -webkit-backdrop-filter: blur(12px) saturate(130%);
+    /* .pill is built for var(--text); this surface needs a light label */
+    color: #f2f0ec;
   }
-  .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(40, 54, 58, 0.24);
-    background: #1e2a2d;
+
+  .drop-in__label {
+    position: relative;
+    z-index: 2;
+  }
+
+  .drop-in__snow {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .drop-in__layer {
+    position: absolute;
+    inset: -20% -10% -5%;
+    width: 120%;
+    height: 140%;
+    will-change: transform;
+  }
+
+  .drop-in__layer--1 {
+    background-image: radial-gradient(
+        circle 1.2px at 8% 12%,
+        rgba(255, 255, 255, 0.95) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.5px at 22% 8%,
+        rgba(255, 255, 255, 0.85) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1px at 38% 20%,
+        rgba(255, 255, 255, 0.75) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.3px at 55% 4%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.1px at 72% 16%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.4px at 88% 10%,
+        rgba(255, 255, 255, 0.88) 0%,
+        transparent 100%
+      );
+    opacity: 0.65;
+    animation: btn-snow-fall-1 7s linear infinite;
+  }
+
+  .drop-in__layer--2 {
+    background-image: radial-gradient(
+        circle 0.9px at 12% 30%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.2px at 35% 22%,
+        rgba(255, 255, 255, 0.85) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1px at 58% 18%,
+        rgba(255, 255, 255, 0.65) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 1.1px at 78% 28%,
+        rgba(255, 255, 255, 0.78) 0%,
+        transparent 100%
+      );
+    opacity: 0.5;
+    filter: blur(0.2px);
+    animation: btn-snow-fall-2 5.2s linear infinite;
+  }
+
+  .drop-in__layer--3 {
+    background-image: radial-gradient(
+        circle 0.7px at 18% 5%,
+        rgba(200, 230, 255, 0.65) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 0.8px at 50% 12%,
+        rgba(255, 255, 255, 0.6) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        circle 0.6px at 80% 8%,
+        rgba(220, 240, 255, 0.7) 0%,
+        transparent 100%
+      );
+    opacity: 0.45;
+    animation: btn-snow-fall-3 4.1s linear infinite;
+  }
+
+  @keyframes btn-snow-fall-1 {
+    from {
+      transform: translate3d(0, -8%, 0);
+    }
+    to {
+      transform: translate3d(2px, 42%, 0);
+    }
+  }
+  @keyframes btn-snow-fall-2 {
+    from {
+      transform: translate3d(1px, -4%, 0);
+    }
+    to {
+      transform: translate3d(-3px, 45%, 0);
+    }
+  }
+  @keyframes btn-snow-fall-3 {
+    from {
+      transform: translate3d(-1px, -2%, 0) scale(0.95);
+    }
+    to {
+      transform: translate3d(1px, 50%, 0) scale(1.02);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drop-in__layer--1,
+    .drop-in__layer--2,
+    .drop-in__layer--3 {
+      animation: none;
+    }
+  }
+
+  :global(.pill.drop-in:hover) {
+    background: var(--drop-in-surface-hover);
+    color: #f2f0ec;
+    border: none;
+    box-shadow: none;
   }
 </style>
