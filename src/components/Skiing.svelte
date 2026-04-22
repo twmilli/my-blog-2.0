@@ -39,16 +39,11 @@
     size: number;
   };
 
-  type GateFeature = BaseFeature & {
-    type: "gate";
-  };
-
   type Feature =
     | KickerFeature
     | KnuckleFeature
     | RailFeature
-    | TreeFeature
-    | GateFeature;
+    | TreeFeature;
 
   type Skier = {
     x: number;
@@ -82,15 +77,37 @@
     | " "
     | "Enter";
 
-  const W = 440;
-  const H = 560;
-  const SKIER_SCREEN_Y = Math.round(H * 0.3);
+  const CANVAS_WIDTH = 440;
+  const CANVAS_HEIGHT = 560;
+  const SKIER_SCREEN_Y = Math.round(CANVAS_HEIGHT * 0.3);
   const SLOPE_HALF = 150;
   const RAIL_HEIGHT = 6;
   /** Rail-local ±x bound: same value for grind stay vs air catch so pops cannot instantly re-lock. */
   const RAIL_LATERAL_HALF_WIDTH = 6;
 
   const TAU = Math.PI * 2;
+
+  /** World-space axis-aligned box for spawn overlap (world x / downhill y). */
+  type WorldRect = { minX: number; minY: number; maxX: number; maxY: number };
+
+  // --- Spawn / overlap (tune after playtest; comments summarize intent) ----
+  // SPAWN_MAX_FEATURES: hard cap so the features array and canvas stay light.
+  // SPAWN_AABB_PAD: min gap between *unrelated* feature bounds (prevents stack).
+  // SPAWN_BACKOFF: when a bundle is rejected, push that type's next spawn Y
+  //   forward so we don't busy-loop; schedulers also advance at cap.
+  // Parallel coins: each bundle type rolls SPAWN_P_* independently when due
+  // (no shared weighted lottery). Tree/cluster still use REST_* × TREE_SPAWN_WEIGHT_MULT
+  // for their marginal probabilities vs jump/rail.
+  // Playtest (Cursor browser, localhost:3000): no stacked unrelated props at
+  // default sliders; nudged pad/backoff so dense checks reject a bit less often.
+  const SPAWN_MAX_FEATURES = 95;
+  const SPAWN_AABB_PAD = 12;
+  const SPAWN_BACKOFF = 50;
+  const SPAWN_LOOP_CAP = 36;
+  const REST_TREE_FRACTION = 27 / 48;
+  const REST_CLUSTER_FRACTION = 21 / 48;
+  /** Scales tree/cluster marginal spawn probabilities vs jump/rail. */
+  const TREE_SPAWN_WEIGHT_MULT = 0.4;
 
   let canvas!: HTMLCanvasElement;
   let wrapEl!: HTMLDivElement;
@@ -104,19 +121,30 @@
   let lastTrick = "";
   let trickTimer = 0;
 
-  // TEMP: tunable mixture knobs for feature spawning. `jumpChance` and
-  // `railChance` are probabilities in [0, 1]. The remainder fills with
-  // trees/gates proportionally. Backed by integer percentages so the
-  // range inputs below can bind and display whole numbers.
-  let jumpPct = 38;
-  let railPct = 14;
-  $: jumpChance = jumpPct / 100;
-  $: railChance = Math.min(railPct, 100 - jumpPct) / 100;
+  // Marginal Bernoulli probabilities when a type is due (next*Y in window).
+  const SPAWN_JUMP_WEIGHT = 38;
+  const SPAWN_RAIL_WEIGHT = 14;
+  const railBoundForSpawn = Math.min(
+    SPAWN_RAIL_WEIGHT,
+    100 - SPAWN_JUMP_WEIGHT,
+  );
+  const restWeightForSpawn =
+    Math.max(0, 100 - SPAWN_JUMP_WEIGHT - railBoundForSpawn) / 100;
+  const SPAWN_P_JUMP = SPAWN_JUMP_WEIGHT / 100;
+  const SPAWN_P_RAIL = railBoundForSpawn / 100;
+  const SPAWN_P_TREE =
+    restWeightForSpawn * REST_TREE_FRACTION * TREE_SPAWN_WEIGHT_MULT;
+  const SPAWN_P_CLUSTER =
+    restWeightForSpawn * REST_CLUSTER_FRACTION * TREE_SPAWN_WEIGHT_MULT;
 
   let skier: Skier;
   let worldY: number;
   let features: Feature[];
-  let nextFeatureY: number;
+  /** Per bundle type: world Y where the next *proposal* of that type may start. */
+  let nextJumpY: number;
+  let nextRailY: number;
+  let nextTreeY: number;
+  let nextClusterY: number;
   let trail: TrailPoint[];
   let wallSpikes: unknown[];
 
@@ -129,6 +157,129 @@
   const rand = (min: number, max: number): number =>
     min + Math.random() * (max - min);
   const mod = (v: number, m: number): number => ((v % m) + m) % m;
+
+  function localToWorld(
+    cx: number,
+    cy: number,
+    ang: number,
+    lx: number,
+    ly: number,
+  ): { x: number; y: number } {
+    const c = Math.cos(ang);
+    const s = Math.sin(ang);
+    return { x: cx + lx * c - ly * s, y: cy + lx * s + ly * c };
+  }
+
+  function worldAabbFromCorners(pts: { x: number; y: number }[]): WorldRect {
+    let minX = pts[0].x;
+    let maxX = pts[0].x;
+    let minY = pts[0].y;
+    let maxY = pts[0].y;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  function unionWorldRects(a: WorldRect, b: WorldRect): WorldRect {
+    return {
+      minX: Math.min(a.minX, b.minX),
+      minY: Math.min(a.minY, b.minY),
+      maxX: Math.max(a.maxX, b.maxX),
+      maxY: Math.max(a.maxY, b.maxY),
+    };
+  }
+
+  /** True if outer edges overlap when each rect is inflated by pad. */
+  function worldRectsOverlapPadded(a: WorldRect, b: WorldRect, pad: number): boolean {
+    return !(
+      a.maxX + pad < b.minX - pad ||
+      a.minX - pad > b.maxX + pad ||
+      a.maxY + pad < b.minY - pad ||
+      a.minY - pad > b.maxY + pad
+    );
+  }
+
+  function worldAabbKicker(f: KickerFeature): WorldRect {
+    const a = f.angle || 0;
+    const halfW = f.w / 2;
+    const rampLen = f.rampLen;
+    const front =
+      f.variant === "railApproach" ? 6 + 4 : 10 + 4;
+    const localCorners: { lx: number; ly: number }[] = [
+      { lx: -halfW, ly: 0 },
+      { lx: halfW, ly: 0 },
+      { lx: halfW * 0.88, ly: -rampLen - 2 },
+      { lx: -halfW * 0.88, ly: -rampLen - 2 },
+      { lx: -halfW, ly: front },
+      { lx: halfW, ly: front },
+    ];
+    const pts = localCorners.map((p) =>
+      localToWorld(f.x, f.y, a, p.lx, p.ly),
+    );
+    return worldAabbFromCorners(pts);
+  }
+
+  function worldAabbKnuckle(f: KnuckleFeature): WorldRect {
+    const halfW = f.w / 2;
+    const halfLen = f.topLen / 2;
+    const topHalfW = halfW * 0.9;
+    const yUp = f.y - halfLen - f.lipHeight;
+    const yDown = f.y + halfLen + f.outSlope + 4;
+    return {
+      minX: f.x - topHalfW - 2,
+      minY: yUp,
+      maxX: f.x + topHalfW + 2,
+      maxY: yDown,
+    };
+  }
+
+  function worldAabbRail(f: RailFeature): WorldRect {
+    const a = f.angle || 0;
+    const halfLen = f.len / 2;
+    const across = 9;
+    const c1 = localToWorld(f.x, f.y, a, -across, -halfLen);
+    const c2 = localToWorld(f.x, f.y, a, across, -halfLen);
+    const c3 = localToWorld(f.x, f.y, a, across, halfLen);
+    const c4 = localToWorld(f.x, f.y, a, -across, halfLen);
+    return worldAabbFromCorners([c1, c2, c3, c4]);
+  }
+
+  function worldAabbTree(f: TreeFeature): WorldRect {
+    const s = f.size || 20;
+    const r = s * 0.95;
+    return {
+      minX: f.x - r,
+      minY: f.y - r * 0.9,
+      maxX: f.x + r,
+      maxY: f.y + r * 0.9,
+    };
+  }
+
+  function worldAabbForFeature(f: Feature): WorldRect {
+    if (f.type === "kicker") return worldAabbKicker(f);
+    if (f.type === "knuckle") return worldAabbKnuckle(f);
+    if (f.type === "rail") return worldAabbRail(f);
+    return worldAabbTree(f);
+  }
+
+  function bundleConflicts(
+    u: WorldRect,
+    list: readonly Feature[],
+  ): boolean {
+    for (const f of list) {
+      if (worldRectsOverlapPadded(u, worldAabbForFeature(f), SPAWN_AABB_PAD)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  type BundleKind = "jump" | "rail" | "tree" | "cluster";
 
   function resetGame(): void {
     skier = {
@@ -160,7 +311,10 @@
     };
     worldY = 0;
     features = [];
-    nextFeatureY = 220;
+    nextJumpY = 200;
+    nextRailY = 280;
+    nextTreeY = 180;
+    nextClusterY = 340;
     trail = [];
     wallSpikes = [];
     lastTrick = "";
@@ -179,70 +333,106 @@
   let _featureId = 0;
 
   function spawnFeatures(): void {
-    const ahead = worldY + H * 2.2;
-    // Thresholds derived from the tunable knobs. The remaining probability
-    // (1 - jumpChance - railChance) splits across trees / gates / clusters
-    // using the original ~0.18 / 0.16 / 0.14 proportions.
-    const jumpT = clamp(jumpChance, 0, 1);
-    const railT = jumpT + clamp(railChance, 0, 1 - jumpT);
-    const restSpan = Math.max(0, 1 - railT);
-    const treeT = railT + restSpan * (0.18 / 0.48);
-    const gateT = railT + restSpan * ((0.18 + 0.16) / 0.48);
+    const ahead = worldY + CANVAS_HEIGHT * 2.2;
+    let it = 0;
+    while (it < SPAWN_LOOP_CAP) {
+      it++;
+      if (features.length >= SPAWN_MAX_FEATURES) {
+        if (nextJumpY < ahead) nextJumpY += SPAWN_BACKOFF;
+        if (nextRailY < ahead) nextRailY += SPAWN_BACKOFF;
+        if (nextTreeY < ahead) nextTreeY += SPAWN_BACKOFF;
+        if (nextClusterY < ahead) nextClusterY += SPAWN_BACKOFF;
+        break;
+      }
 
-    while (nextFeatureY < ahead) {
-      const roll = Math.random();
-      const cx = rand(-SLOPE_HALF + 40, SLOPE_HALF - 40);
-      if (roll < jumpT) {
-        // Kicker + paired knuckle landing zone. The kicker is the launch
-        // ramp only; the knuckle is a separate mound placed so the
-        // ballistic arc reliably lands on its top face.
+      const dueJump = nextJumpY < ahead;
+      const dueRail = nextRailY < ahead;
+      const dueTree = nextTreeY < ahead;
+      const dueCluster = nextClusterY < ahead;
+      if (!dueJump && !dueRail && !dueTree && !dueCluster) break;
+
+      type Roll = { kind: BundleKind; baseY: number };
+      const wins: Roll[] = [];
+      if (dueJump) {
+        if (Math.random() < SPAWN_P_JUMP) wins.push({ kind: "jump", baseY: nextJumpY });
+        else nextJumpY += rand(12, 28);
+      }
+      if (dueRail) {
+        if (Math.random() < SPAWN_P_RAIL) wins.push({ kind: "rail", baseY: nextRailY });
+        else nextRailY += rand(12, 28);
+      }
+      if (dueTree) {
+        if (Math.random() < SPAWN_P_TREE) wins.push({ kind: "tree", baseY: nextTreeY });
+        else nextTreeY += rand(12, 28);
+      }
+      if (dueCluster) {
+        if (Math.random() < SPAWN_P_CLUSTER)
+          wins.push({ kind: "cluster", baseY: nextClusterY });
+        else nextClusterY += rand(12, 28);
+      }
+
+      wins.sort((a, b) => a.baseY - b.baseY);
+
+      for (const roll of wins) {
+        if (features.length >= SPAWN_MAX_FEATURES) break;
+        const { kind, baseY } = roll;
+
+        if (kind === "jump") {
         const kickerId = ++_featureId;
         const gap = rand(120, 140);
         const topLen = 150;
         const outSlope = 36;
-        features.push({
+        const cx = rand(-SLOPE_HALF + 40, SLOPE_HALF - 40);
+        const w = rand(54, 72);
+        const rampLen = rand(30, 40);
+        const power = rand(175, 200);
+        const k1: KickerFeature = {
           id: kickerId,
           type: "kicker",
           x: cx,
-          y: nextFeatureY,
-          w: rand(54, 72),
-          rampLen: rand(30, 40),
-          power: rand(175, 200),
+          y: baseY,
+          w,
+          rampLen,
+          power,
           pairedKnuckleId: kickerId + 1,
-        });
-        features.push({
+        };
+        const k2: KnuckleFeature = {
           id: ++_featureId,
           type: "knuckle",
           x: cx,
-          y: nextFeatureY + gap + topLen / 2,
+          y: baseY + gap + topLen / 2,
           w: rand(84, 104),
           topLen,
           outSlope,
           lipHeight: 10,
           pairedKickerId: kickerId,
-        });
-        nextFeatureY += gap + topLen + outSlope + rand(180, 240);
-      } else if (roll < railT) {
-        // Rail — always paired with a small approach kicker. The kicker is
-        // a real kicker under the hood (shares physics with the big
-        // kicker + knuckle pair) but is tiny and low-powered so the
-        // ballistic arc lands the skier on the rail rather than over it.
-        //
-        // The kicker inherits the rail's angle and is positioned along the
-        // rail's axis — a `gap` uphill of the rail's uphill end — so the
-        // lip, the launch direction, and the bar all read as a single
-        // straight line instead of an axis-aligned hump next to a diagonal
-        // bar. Takeoff still preserves approach heading (`launch`): you
-        // aim onto the rail yourself.
+        };
+        const u = unionWorldRects(
+          worldAabbKicker(k1),
+          worldAabbKnuckle(k2),
+        );
+        if (features.length + 2 > SPAWN_MAX_FEATURES) {
+          _featureId -= 2;
+          nextJumpY += SPAWN_BACKOFF;
+        } else if (bundleConflicts(u, features)) {
+          _featureId -= 2;
+          nextJumpY += SPAWN_BACKOFF;
+        } else {
+          features = [...features, k1, k2];
+          nextJumpY =
+            baseY + gap + topLen + outSlope + rand(180, 240);
+        }
+      } else if (kind === "rail") {
         const railKickerId = ++_featureId;
         const railId = railKickerId + 1;
         const gap = rand(18, 26);
         const len = rand(70, 110);
         const angle = rand(-0.28, 0.28);
+        const cx = rand(-SLOPE_HALF + 40, SLOPE_HALF - 40);
         const railCenterX = cx;
-        const railCenterY = nextFeatureY + gap + len / 2;
+        const railCenterY = baseY + gap + len / 2;
         const kickerOffset = len / 2 + gap;
-        features.push({
+        const k1: KickerFeature = {
           id: railKickerId,
           type: "kicker",
           variant: "railApproach",
@@ -253,8 +443,8 @@
           rampLen: rand(22, 30),
           power: rand(75, 100),
           pairedRailId: railId,
-        });
-        features.push({
+        };
+        const r1: RailFeature = {
           id: ++_featureId,
           type: "rail",
           x: railCenterX,
@@ -263,54 +453,84 @@
           angle,
           height: RAIL_HEIGHT,
           pairedKickerId: railKickerId,
-        });
-        nextFeatureY += gap + len + rand(130, 200);
-      } else if (roll < treeT) {
-        // Tree: side only
-        const side = Math.random() < 0.5 ? -1 : 1;
-        features.push({
-          id: ++_featureId,
-          type: "tree",
-          x: side * rand(70, SLOPE_HALF - 4),
-          y: nextFeatureY,
-          size: rand(18, 26),
-        });
-        nextFeatureY += rand(30, 70);
-      } else if (roll < gateT) {
-        // Gate (orange pole)
-        const pair = Math.random() < 0.45;
-        features.push({
-          id: ++_featureId,
-          type: "gate",
-          x: cx,
-          y: nextFeatureY,
-        });
-        if (pair) {
-          features.push({
-            id: ++_featureId,
-            type: "gate",
-            x: cx + (cx > 0 ? -rand(24, 38) : rand(24, 38)),
-            y: nextFeatureY + rand(-4, 4),
-          });
+        };
+        const u = unionWorldRects(
+          worldAabbKicker(k1),
+          worldAabbRail(r1),
+        );
+        if (features.length + 2 > SPAWN_MAX_FEATURES) {
+          _featureId -= 2;
+          nextRailY += SPAWN_BACKOFF;
+        } else if (bundleConflicts(u, features)) {
+          _featureId -= 2;
+          nextRailY += SPAWN_BACKOFF;
+        } else {
+          features = [...features, k1, r1];
+          nextRailY = baseY + gap + len + rand(130, 200);
         }
-        nextFeatureY += rand(70, 130);
-      } else {
-        // Tree cluster
-        const side = Math.random() < 0.5 ? -1 : 1;
-        for (let i = 0; i < 5; i++) {
-          features.push({
-            id: ++_featureId,
+      } else if (kind === "tree") {
+        let done = false;
+        for (let att = 0; att < 3 && !done; att++) {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const tr: TreeFeature = {
+            id: 0,
             type: "tree",
-            x: side * rand(70, SLOPE_HALF - 4) + rand(-6, 6),
-            y: nextFeatureY + i * rand(16, 28),
-            size: rand(16, 26),
-          });
+            x: side * rand(70, SLOPE_HALF - 4),
+            y: baseY,
+            size: rand(18, 26),
+          };
+          const u = worldAabbTree(tr);
+          if (
+            features.length + 1 > SPAWN_MAX_FEATURES ||
+            bundleConflicts(u, features)
+          ) {
+            continue;
+          }
+          tr.id = ++_featureId;
+          features = [...features, tr];
+          nextTreeY = baseY + rand(30, 70);
+          done = true;
         }
-        nextFeatureY += 140;
+        if (!done) nextTreeY += SPAWN_BACKOFF;
+      } else {
+        let done = false;
+        for (let att = 0; att < 3 && !done; att++) {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const trs: TreeFeature[] = [];
+          let uGroup: WorldRect | null = null;
+          for (let i = 0; i < 5; i++) {
+            const tr: TreeFeature = {
+              id: 0,
+              type: "tree",
+              x: side * rand(70, SLOPE_HALF - 4) + rand(-6, 6),
+              y: baseY + i * rand(16, 28),
+              size: rand(16, 26),
+            };
+            const u = worldAabbTree(tr);
+            uGroup = uGroup ? unionWorldRects(uGroup, u) : { ...u };
+            trs.push(tr);
+          }
+          if (!uGroup) continue;
+          if (features.length + 5 > SPAWN_MAX_FEATURES || bundleConflicts(uGroup, features)) {
+            continue;
+          }
+          for (const t of trs) {
+            t.id = ++_featureId;
+          }
+          features = [...features, ...trs];
+          let yMax = baseY;
+          for (const t of trs) {
+            if (t.y > yMax) yMax = t.y;
+          }
+          nextClusterY = yMax + 140;
+          done = true;
+        }
+        if (!done) nextClusterY += SPAWN_BACKOFF;
+      }
       }
     }
     features = features.filter(
-      (f) => f.y > worldY - 400 && f.y < worldY + H * 2.6,
+      (f) => f.y > worldY - 400 && f.y < worldY + CANVAS_HEIGHT * 2.6,
     );
   }
 
@@ -447,7 +667,7 @@
     }
 
     // Hard canvas clamp — with a wall catch so you can never get pinned.
-    const halfW = W / 2 - 20;
+    const halfW = CANVAS_WIDTH / 2 - 20;
     if (skier.x < -halfW) {
       skier.x = -halfW;
       // Force heading positive (rightward) at a firm rate if still pushing left.
@@ -606,12 +826,6 @@
           // heading snowballed into the skier getting stuck off-piste.
           skier.speed = Math.max(45, skier.speed - 22);
         }
-      } else if (f.type === "gate") {
-        const dy = f.y - worldY;
-        if (Math.abs(dy) > 20) continue;
-        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) {
-          skier.speed = Math.max(60, skier.speed - 4);
-        }
       }
     }
   }
@@ -714,7 +928,7 @@
 
   function drawBackground(): void {
     ctx.fillStyle = "#fdfdfd";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     drawWallSpikes();
   }
@@ -725,26 +939,26 @@
     // the outside and a zigzag between SLOPE_HALF+3 and SLOPE_HALF-4 on the
     // inside, so tips barely encroach into the piste.
     ctx.save();
-    ctx.translate(W / 2, 0);
+    ctx.translate(CANVAS_WIDTH / 2, 0);
 
     const baseInset = 3; // base of each tooth sits this far outside SLOPE_HALF
     const tipInset = 4; // tip protrudes this far INSIDE SLOPE_HALF
     const toothH = 26;
 
     for (const side of [-1, 1]) {
-      const outerEdge = side * (W / 2 + 4);
+      const outerEdge = side * (CANVAS_WIDTH / 2 + 4);
       const baseX = side * (SLOPE_HALF + baseInset);
       const tipX = side * (SLOPE_HALF - tipInset);
 
       ctx.beginPath();
       ctx.moveTo(outerEdge, -6);
-      ctx.lineTo(outerEdge, H + 6);
+      ctx.lineTo(outerEdge, CANVAS_HEIGHT + 6);
 
       // Traverse back up the inner edge with a zigzag.
       const offset = mod(worldY, toothH);
-      let y = H + 6;
+      let y = CANVAS_HEIGHT + 6;
       ctx.lineTo(baseX, y);
-      y = Math.ceil((H + 6) / toothH) * toothH - offset;
+      y = Math.ceil((CANVAS_HEIGHT + 6) / toothH) * toothH - offset;
       while (y > -6) {
         ctx.lineTo(tipX, y - toothH / 2);
         ctx.lineTo(baseX, y - toothH);
@@ -764,8 +978,8 @@
       let firstStroke = true;
       {
         const offset2 = mod(worldY, toothH);
-        let yy = Math.ceil((H + 6) / toothH) * toothH - offset2;
-        ctx.moveTo(baseX, H + 6);
+        let yy = Math.ceil((CANVAS_HEIGHT + 6) / toothH) * toothH - offset2;
+        ctx.moveTo(baseX, CANVAS_HEIGHT + 6);
         while (yy > -6) {
           ctx.lineTo(tipX, yy - toothH / 2);
           ctx.lineTo(baseX, yy - toothH);
@@ -783,7 +997,7 @@
   function drawTrail(): void {
     if (trail.length < 2) return;
     ctx.save();
-    ctx.translate(W / 2, 0);
+    ctx.translate(CANVAS_WIDTH / 2, 0);
     ctx.strokeStyle = "rgba(110, 110, 110, 0.3)";
     ctx.lineWidth = 1.1;
     ctx.lineCap = "round";
@@ -794,7 +1008,7 @@
         const p = trail[i];
         const sy = toScreenY(p.y);
         if (sy < -20) continue;
-        if (sy > H + 20) break;
+        if (sy > CANVAS_HEIGHT + 20) break;
         const perpX = Math.cos(p.h || 0) * side;
         const perpY = -Math.sin(p.h || 0) * side;
         const x = p.x + perpX;
@@ -1034,30 +1248,10 @@
     ctx.restore();
   }
 
-  function drawGate(f: GateFeature): void {
-    const sy = toScreenY(f.y);
-    ctx.save();
-    ctx.translate(f.x, sy);
-    ctx.fillStyle = "rgba(60, 60, 60, 0.22)";
-    ctx.beginPath();
-    ctx.ellipse(1.5, 1, 2.4, 0.9, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = "#e16a2d";
-    ctx.fillRect(-1, -11, 2, 12);
-    ctx.fillStyle = "#f58c4a";
-    ctx.beginPath();
-    ctx.moveTo(0, -11);
-    ctx.lineTo(5, -9.5);
-    ctx.lineTo(0, -8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
   // --- Skier ---------------------------------------------------------------
 
   function drawSkier(): void {
-    const screenX = W / 2 + skier.x;
+    const screenX = CANVAS_WIDTH / 2 + skier.x;
     const screenY = SKIER_SCREEN_Y - skier.altitude;
 
     // Air shadow under the skier (hugs the piste).
@@ -1068,7 +1262,7 @@
       ctx.fillStyle = `rgba(50, 50, 50, ${0.24 * t})`;
       ctx.beginPath();
       ctx.ellipse(
-        W / 2 + skier.x,
+        CANVAS_WIDTH / 2 + skier.x,
         SKIER_SCREEN_Y + 3,
         7 * t,
         2.4 * t,
@@ -1186,29 +1380,28 @@
       ctx.font = '28px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillText(lastTrick, W / 2, 44);
+      ctx.fillText(lastTrick, CANVAS_WIDTH / 2, 44);
       ctx.restore();
     }
   }
 
   function draw(): void {
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     drawBackground();
     drawTrail();
 
     ctx.save();
-    ctx.translate(W / 2, 0);
+    ctx.translate(CANVAS_WIDTH / 2, 0);
     const sorted = features
       .slice()
       .sort((a, b) => toScreenY(a.y) - toScreenY(b.y));
     for (const f of sorted) {
       const sy = toScreenY(f.y);
-      if (sy < -160 || sy > H + 160) continue;
+      if (sy < -160 || sy > CANVAS_HEIGHT + 160) continue;
       if (f.type === "kicker") drawKicker(f);
       else if (f.type === "knuckle") drawKnuckle(f);
       else if (f.type === "rail") drawRail(f);
       else if (f.type === "tree") drawTree(f);
-      else if (f.type === "gate") drawGate(f);
     }
     ctx.restore();
 
@@ -1217,7 +1410,7 @@
   }
 
   function drawIdle(): void {
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     drawBackground();
   }
 
@@ -1265,8 +1458,8 @@
 
   function setupCanvas(): void {
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
+    canvas.width = CANVAS_WIDTH * dpr;
+    canvas.height = CANVAS_HEIGHT * dpr;
     canvas.style.width = "100%";
     canvas.style.height = "100%";
     const c = canvas.getContext("2d");
@@ -1303,35 +1496,6 @@
   tabindex="0"
   on:click={() => wrapEl.focus()}
 >
-  <!-- TEMP: mixture knobs for tuning feature spawn ratios. Remove once
-       the balance is dialed in. -->
-  <div class="knobs" on:click|stopPropagation>
-    <label>
-      <span class="knob-label">Jumps</span>
-      <input
-        type="range"
-        min="0"
-        max="100"
-        step="1"
-        bind:value={jumpPct}
-        aria-label="Jump frequency percent"
-      />
-      <span class="knob-val">{jumpPct}%</span>
-    </label>
-    <label>
-      <span class="knob-label">Rails</span>
-      <input
-        type="range"
-        min="0"
-        max={100 - jumpPct}
-        step="1"
-        bind:value={railPct}
-        aria-label="Rail frequency percent"
-      />
-      <span class="knob-val">{Math.min(railPct, 100 - jumpPct)}%</span>
-    </label>
-  </div>
-
   <div class="stage">
     <canvas bind:this={canvas} aria-label="Skiing game"></canvas>
 
@@ -1374,39 +1538,6 @@
     display: flex;
     flex-direction: column;
     outline: none;
-  }
-
-  .knobs {
-    display: flex;
-    gap: 0.9rem;
-    padding: 0.5rem 0.75rem;
-    background: #f2f2f2;
-    border-bottom: 1px solid var(--border);
-    font-family: var(--font-sans);
-    font-size: 0.78rem;
-    color: #3a3a3a;
-  }
-  .knobs label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex: 1;
-    min-width: 0;
-  }
-  .knobs input[type="range"] {
-    flex: 1;
-    min-width: 0;
-    accent-color: #28363a;
-    cursor: pointer;
-  }
-  .knob-label {
-    font-weight: 600;
-  }
-  .knob-val {
-    font-variant-numeric: tabular-nums;
-    min-width: 2.5em;
-    text-align: right;
-    color: #6b6b6b;
   }
 
   .stage {
