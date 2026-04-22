@@ -97,9 +97,10 @@
   --text-muted: #958d84;
   --text-faint: #625c55;
 
-  --accent: #1f5a40;       /* deep pine — matches light mode */
-  --accent-ink: #ffffff;   /* white ink on deep pine */
-  --accent-soft: #153a2a;  /* deep mossy emerald tint */
+  /* Brighter than light-mode pine so links / “Read essay” read clearly on dark. */
+  --accent: #3f946e;
+  --accent-ink: #ffffff;   /* white on accent fills */
+  --accent-soft: #1a2f27;  /* deep tint of the dark accent */
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
