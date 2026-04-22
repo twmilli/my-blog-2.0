@@ -5,12 +5,12 @@
   export let segment;
 
   // Keep <html data-theme> in sync when the store changes.
-  $: if (
-    typeof document !== "undefined" &&
-    $themeStore &&
-    $themeStore.name
-  ) {
+  $: if (typeof document !== "undefined" && $themeStore && $themeStore.name) {
     document.documentElement.setAttribute("data-theme", $themeStore.name);
+    document.documentElement.setAttribute(
+      "data-light-riff",
+      String($themeStore.lightRiff ?? 1)
+    );
   }
 </script>
 

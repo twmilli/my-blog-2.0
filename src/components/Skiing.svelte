@@ -1,23 +1,109 @@
-<script>
+<script lang="ts">
   import { onMount, onDestroy } from "svelte";
+
+  type GameState = "idle" | "playing" | "crashed";
+  type AirSource = "kicker" | "rail" | "knuckle" | null;
+
+  type BaseFeature = { id: number; x: number; y: number };
+
+  type KickerFeature = BaseFeature & {
+    type: "kicker";
+    w: number;
+    rampLen: number;
+    power: number;
+    angle?: number;
+    variant?: "railApproach";
+    pairedKnuckleId?: number;
+    pairedRailId?: number;
+  };
+
+  type KnuckleFeature = BaseFeature & {
+    type: "knuckle";
+    w: number;
+    topLen: number;
+    outSlope: number;
+    lipHeight: number;
+    pairedKickerId: number;
+  };
+
+  type RailFeature = BaseFeature & {
+    type: "rail";
+    len: number;
+    angle: number;
+    height: number;
+    pairedKickerId: number;
+  };
+
+  type TreeFeature = BaseFeature & {
+    type: "tree";
+    size: number;
+  };
+
+  type GateFeature = BaseFeature & {
+    type: "gate";
+  };
+
+  type Feature =
+    | KickerFeature
+    | KnuckleFeature
+    | RailFeature
+    | TreeFeature
+    | GateFeature;
+
+  type Skier = {
+    x: number;
+    heading: number;
+    speed: number;
+    targetSpeed: number;
+    brakeAnim: number;
+    inAir: boolean;
+    altitude: number;
+    vz: number;
+    airStartY: number;
+    airHeading: number;
+    airSource: AirSource;
+    onFeature: number | null;
+    yawDeg: number;
+    yawSpeed: number;
+    yawSpun: number;
+    pitchDeg: number;
+    pitchSpeed: number;
+    pitchSpun: number;
+    pitchDir: number;
+    switch: boolean;
+    switchTakeoff: boolean;
+    grindSpun?: number;
+    grindFeet?: number;
+  };
+
+  type TrailPoint = { x: number; y: number; h: number };
+
+  type TrackedKey =
+    | "ArrowLeft"
+    | "ArrowRight"
+    | "ArrowUp"
+    | "ArrowDown"
+    | " "
+    | "Enter";
 
   const W = 440;
   const H = 560;
   const SKIER_SCREEN_Y = Math.round(H * 0.3);
   const SLOPE_HALF = 150;
+  const RAIL_HEIGHT = 6;
 
   const TAU = Math.PI * 2;
   const RAD2DEG = 180 / Math.PI;
 
-  let canvas;
-  let wrapEl;
-  let ctx;
-  let raf;
+  let canvas!: HTMLCanvasElement;
+  let wrapEl!: HTMLDivElement;
+  let ctx!: CanvasRenderingContext2D;
+  let raf: number | undefined;
   let lastTs = 0;
   let dpr = 1;
 
   // idle | playing | crashed
-  let state = "idle";
+  let state: GameState = "idle";
   let lastTrick = "";
   let trickTimer = 0;
 
@@ -30,21 +116,24 @@
   $: jumpChance = jumpPct / 100;
   $: railChance = Math.min(railPct, 100 - jumpPct) / 100;
 
-  let skier;
-  let worldY;
-  let features;
-  let nextFeatureY;
-  let trail;
-  let wallSpikes; // procedural wall spikes
+  let skier: Skier;
+  let worldY: number;
+  let features: Feature[];
+  let nextFeatureY: number;
+  let trail: TrailPoint[];
+  let wallSpikes: unknown[];
 
-  const keys = {};
+  const keys = {} as Partial<Record<TrackedKey, boolean>>;
 
-  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
-  const approach = (v, t, rate, dt) => v + (t - v) * Math.min(1, rate * dt);
-  const rand = (min, max) => min + Math.random() * (max - min);
-  const mod = (v, m) => ((v % m) + m) % m;
+  const clamp = (v: number, lo: number, hi: number): number =>
+    v < lo ? lo : v > hi ? hi : v;
+  const approach = (v: number, t: number, rate: number, dt: number): number =>
+    v + (t - v) * Math.min(1, rate * dt);
+  const rand = (min: number, max: number): number =>
+    min + Math.random() * (max - min);
+  const mod = (v: number, m: number): number => ((v % m) + m) % m;
 
-  function resetGame() {
+  function resetGame(): void {
     skier = {
       x: 0,
       heading: 0,
@@ -89,7 +178,7 @@
     lastTs = performance.now();
     spawnFeatures();
     primeWallSpikes();
-    cancelAnimationFrame(raf);
+    if (raf !== undefined) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
     if (wrapEl) wrapEl.focus();
   }
@@ -98,7 +187,7 @@
 
   let _featureId = 0;
 
-  function spawnFeatures() {
+  function spawnFeatures(): void {
     const ahead = worldY + H * 2.2;
     // Thresholds derived from the tunable knobs. The remaining probability
     // (1 - jumpChance - railChance) splits across trees / gates / clusters
@@ -152,8 +241,8 @@
         // rail's axis — a `gap` uphill of the rail's uphill end — so the
         // lip, the launch direction, and the bar all read as a single
         // straight line instead of an axis-aligned hump next to a diagonal
-        // bar. The kicker's launch redirects `airHeading` onto that same
-        // axis so the ballistic arc actually tracks down the rail.
+        // bar. Takeoff still preserves approach heading (`launch`): you
+        // aim onto the rail yourself.
         const railKickerId = ++_featureId;
         const railId = railKickerId + 1;
         const gap = rand(18, 26);
@@ -171,7 +260,7 @@
           angle,
           w: rand(38, 50),
           rampLen: rand(22, 30),
-          power: rand(95, 120),
+          power: rand(75, 100),
           pairedRailId: railId,
         });
         features.push({
@@ -181,7 +270,7 @@
           y: railCenterY,
           len,
           angle,
-          height: 6,
+          height: RAIL_HEIGHT,
           pairedKickerId: railKickerId,
         });
         nextFeatureY += gap + len + rand(130, 200);
@@ -236,18 +325,16 @@
 
   // Walls are now drawn as a continuous shaded strip with a small jagged
   // inner edge — see drawPisteWalls. No per-spike data needed.
-  function primeWallSpikes() {}
-  function maintainWallSpikes() {}
+  function primeWallSpikes(): void {}
+  function maintainWallSpikes(): void {}
 
   // --- Update loop ---------------------------------------------------------
 
-  function update(dt) {
+  function update(dt: number): void {
     if (state !== "playing") return;
 
-    const steer =
-      (keys.ArrowLeft ? -1 : 0) + (keys.ArrowRight ? 1 : 0);
-    const pitchIn =
-      (keys.ArrowUp ? 1 : 0) + (keys.ArrowDown ? -1 : 0);
+    const steer = (keys.ArrowLeft ? -1 : 0) + (keys.ArrowRight ? 1 : 0);
+    const pitchIn = (keys.ArrowUp ? 1 : 0) + (keys.ArrowDown ? -1 : 0);
 
     if (skier.inAir) {
       // ---- AIR ----------------------------------------------------------
@@ -287,7 +374,7 @@
     } else if (skier.onFeature) {
       // ---- GRINDING on a rail ------------------------------------------
       const f = features.find((ft) => ft.id === skier.onFeature);
-      if (!f) {
+      if (!f || f.type !== "rail") {
         skier.onFeature = null;
       } else {
         // Yaw spins like the air — left/right rotates the skier in-plane
@@ -312,10 +399,8 @@
         const railAngle = f.angle || 0;
         const ox = skier.x - f.x;
         const oy = worldY - f.y;
-        const localDx =
-          ox * Math.cos(-railAngle) - oy * Math.sin(-railAngle);
-        const localDy =
-          ox * Math.sin(-railAngle) + oy * Math.cos(-railAngle);
+        const localDx = ox * Math.cos(-railAngle) - oy * Math.sin(-railAngle);
+        const localDy = ox * Math.sin(-railAngle) + oy * Math.cos(-railAngle);
 
         // Leave the grind as soon as the preserved path exits the rail's
         // usable footprint, either by running off the end or sliding off
@@ -326,9 +411,9 @@
           localDy > f.len / 2
         ) {
           skier.inAir = true;
-          // Small speed-scaled pop off the end — a gentle ollie rather
-          // than a real jump, just with a touch more lift.
-          skier.vz = 20 + skier.speed * 0.24;
+          // Speed-scaled pop off the end — stronger than before but still
+          // well below the rail-approach kicker (launch uses ~95–120 + speed*0.05).
+          skier.vz = 45 + skier.speed * 0.27;
           skier.altitude = 0;
           skier.airStartY = worldY;
           skier.airHeading = travelHeading;
@@ -387,13 +472,15 @@
     if (skier.x < -halfW) {
       skier.x = -halfW;
       // Force heading positive (rightward) at a firm rate if still pushing left.
-      if (skier.heading < 0.2) skier.heading = Math.min(0.2, skier.heading + 4 * dt);
+      if (skier.heading < 0.2)
+        skier.heading = Math.min(0.2, skier.heading + 4 * dt);
       // Keep some speed so you can actually escape.
       skier.speed = Math.max(skier.speed, 35);
     }
     if (skier.x > halfW) {
       skier.x = halfW;
-      if (skier.heading > -0.2) skier.heading = Math.max(-0.2, skier.heading - 4 * dt);
+      if (skier.heading > -0.2)
+        skier.heading = Math.max(-0.2, skier.heading - 4 * dt);
       skier.speed = Math.max(skier.speed, 35);
     }
 
@@ -417,7 +504,7 @@
     trickTimer = Math.max(0, trickTimer - dt);
   }
 
-  function crashFromAir() {
+  function crashFromAir(): void {
     skier.altitude = 0;
     skier.inAir = false;
     skier.vz = 0;
@@ -438,7 +525,7 @@
     trickTimer = 4;
   }
 
-  function mountRailFromAir(f) {
+  function mountRailFromAir(f: RailFeature): boolean {
     const pitchResMod = mod(skier.pitchDeg, 180);
     const pitchAligned = pitchResMod < 45 || pitchResMod > 135;
 
@@ -447,7 +534,7 @@
       return true;
     }
 
-    skier.altitude = 0;
+    skier.altitude = 6;
     skier.inAir = false;
     skier.vz = 0;
     skier.onFeature = f.id;
@@ -467,7 +554,7 @@
   // Rails can be caught once the skier is actually descending and close to
   // the bar. Unlike a snow landing, a rail catch preserves yaw so you can
   // lock in sideways or keep spinning while the rail constrains travel.
-  function tryMountRailFromAir() {
+  function tryMountRailFromAir(): boolean {
     for (const f of features) {
       if (f.type !== "rail") continue;
       const ox = skier.x - f.x;
@@ -477,16 +564,16 @@
       const localDx = ox * cos - oy * sin;
       const localDy = ox * sin + oy * cos;
       const descending = skier.vz <= 0;
-      const catchHeight = 14 + (f.height || 0);
-      if (!descending || skier.altitude > catchHeight) continue;
-      if (Math.abs(localDx) < 5 && Math.abs(localDy) < f.len / 2) {
+      const catchHeight = 6 + (f.height || 0);
+      if (!descending || skier.altitude >= catchHeight) continue;
+      if (Math.abs(localDx) < 8 && Math.abs(localDy) < f.len / 2) {
         return mountRailFromAir(f);
       }
     }
     return false;
   }
 
-  function handleFeatureEntry() {
+  function handleFeatureEntry(): void {
     for (const f of features) {
       const dx = f.x - skier.x;
 
@@ -565,27 +652,28 @@
     }
   }
 
-  function launch(f, power) {
+  function launch(f: KickerFeature, power: number): void {
     skier.inAir = true;
     // Minimal speed contribution keeps airtime stable across the normal
     // speed range so the paired knuckle lands the skier reliably.
     skier.vz = power + skier.speed * 0.05;
     skier.airStartY = worldY;
-    // Angled kickers redirect the takeoff onto the kicker's axis so the
-    // ballistic arc tracks straight down whatever the kicker is pointing
-    // at (e.g. a diagonal rail). The kicker draw/rail-physics angle is
-    // negated here because ctx.rotate uses the canvas (y-down) convention
-    // where the rail's downhill direction is (−sin(a), cos(a)), while
-    // the skier's heading moves (sin(h), cos(h)) per unit time — so a
-    // rail angle of +a corresponds to a takeoff heading of −a. Regular
-    // axis-aligned kickers have no angle set and preserve the skier's
-    // heading as before.
-    skier.airHeading = f.angle != null ? -f.angle : skier.heading;
+    // Angled kickers (non–rail-approach) redirect takeoff onto the ramp
+    // axis. Rail-approach lips preserve approach heading like normal
+    // kickers so the arc is not snapped to the rail angle (you may miss).
+    // Canvas y-down: rail angle +a pairs with takeoff heading −a when
+    // redirecting.
+    skier.airHeading =
+      f.variant === "railApproach"
+        ? skier.heading
+        : f.angle != null
+          ? -f.angle
+          : skier.heading;
     skier.pitchDir = 0;
     skier.switchTakeoff = skier.switch;
   }
 
-  function landFromAir() {
+  function landFromAir(): void {
     skier.altitude = 0;
 
     const yawResMod = mod(skier.yawDeg, 180);
@@ -633,7 +721,7 @@
 
   // --- Trick naming --------------------------------------------------------
 
-  function flipName(deg, dir) {
+  function flipName(deg: number, dir: number): string {
     const base = dir > 0 ? "frontflip" : "backflip";
     if (deg >= 900) return `quintuple ${base}`;
     if (deg >= 720) return `quadruple ${base}`;
@@ -643,9 +731,18 @@
     return "";
   }
 
-  function nameTrick(yawDeg, pitchDeg, pitchDir, feet, source, grindFeet, isSwitch) {
+  function nameTrick(
+    yawDeg: number,
+    pitchDeg: number,
+    pitchDir: number,
+    feet: number,
+    source: AirSource,
+    grindFeet: number,
+    isSwitch: boolean,
+  ): string {
     const parts = [];
-    if (source === "rail" && grindFeet > 0) parts.push(`rail slide ${grindFeet}ft`);
+    if (source === "rail" && grindFeet > 0)
+      parts.push(`rail slide ${grindFeet}ft`);
     if (yawDeg >= 180) parts.push(`${yawDeg}°`);
     const fn = flipName(pitchDeg, pitchDir || 1);
     if (fn) parts.push(fn);
@@ -658,7 +755,7 @@
     return isSwitch ? `switch ${name}` : name;
   }
 
-  function sketchyLandingName() {
+  function sketchyLandingName(): string {
     const opts = [
       "Yard sale!",
       "Tomahawk.",
@@ -671,18 +768,18 @@
 
   // --- Drawing -------------------------------------------------------------
 
-  function toScreenY(worldPointY) {
+  function toScreenY(worldPointY: number): number {
     return SKIER_SCREEN_Y + (worldPointY - worldY);
   }
 
-  function drawBackground() {
+  function drawBackground(): void {
     ctx.fillStyle = "#fdfdfd";
     ctx.fillRect(0, 0, W, H);
 
     drawWallSpikes();
   }
 
-  function drawWallSpikes() {
+  function drawWallSpikes(): void {
     // Two off-piste strips (left + right), each with a jagged inner edge
     // that scrolls with worldY. The strip is bounded by the canvas edge on
     // the outside and a zigzag between SLOPE_HALF+3 and SLOPE_HALF-4 on the
@@ -743,7 +840,7 @@
     ctx.restore();
   }
 
-  function drawTrail() {
+  function drawTrail(): void {
     if (trail.length < 2) return;
     ctx.save();
     ctx.translate(W / 2, 0);
@@ -776,7 +873,7 @@
 
   // --- Features (constant size, no depth scaling) -------------------------
 
-  function drawKicker(f) {
+  function drawKicker(f: KickerFeature): void {
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
@@ -826,7 +923,7 @@
     ctx.restore();
   }
 
-  function drawKnuckle(f) {
+  function drawKnuckle(f: KnuckleFeature): void {
     // The knuckle is a tapered snow mound: a short lip-face on the uphill
     // side (the "knuckle" the skier lands on top of), a flat top that is
     // the actual landing zone, and a long gentle output slope fading back
@@ -899,7 +996,7 @@
     ctx.restore();
   }
 
-  function drawRail(f) {
+  function drawRail(f: RailFeature): void {
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
@@ -931,7 +1028,7 @@
     ctx.restore();
   }
 
-  function drawTree(f) {
+  function drawTree(f: TreeFeature): void {
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
@@ -997,7 +1094,7 @@
     ctx.restore();
   }
 
-  function drawGate(f) {
+  function drawGate(f: GateFeature): void {
     const sy = toScreenY(f.y);
     ctx.save();
     ctx.translate(f.x, sy);
@@ -1019,7 +1116,7 @@
 
   // --- Skier ---------------------------------------------------------------
 
-  function drawSkier() {
+  function drawSkier(): void {
     const screenX = W / 2 + skier.x;
     const screenY = SKIER_SCREEN_Y - skier.altitude;
 
@@ -1049,7 +1146,7 @@
     // continuing spins read clearly without the rail re-aiming the skier.
     const bodyRotBase = skier.inAir ? skier.airHeading : skier.heading;
     const brakeAdd = !skier.inAir ? skier.brakeAnim * (Math.PI / 2) : 0;
-    const pitchRad = (skier.pitchDeg / RAD2DEG) || 0;
+    const pitchRad = skier.pitchDeg / RAD2DEG || 0;
     const yawRad =
       skier.inAir || skier.onFeature ? (skier.yawDeg * Math.PI) / 180 : 0;
     const bodyYaw = skier.onFeature ? yawRad : 0;
@@ -1144,11 +1241,10 @@
     }
   }
 
-  function drawHud() {
+  function drawHud(): void {
     ctx.save();
     ctx.fillStyle = "rgba(50, 50, 50, 0.85)";
-    ctx.font =
-      '600 14px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
+    ctx.font = '600 14px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.restore();
@@ -1158,8 +1254,7 @@
       ctx.save();
       ctx.globalAlpha = a;
       ctx.fillStyle = "rgba(50, 50, 50, 0.9)";
-      ctx.font =
-        '28px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
+      ctx.font = '28px "Caveat", "Comic Sans MS", "Segoe Script", cursive';
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(lastTrick, W / 2, 44);
@@ -1167,14 +1262,16 @@
     }
   }
 
-  function draw() {
+  function draw(): void {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
     drawTrail();
 
     ctx.save();
     ctx.translate(W / 2, 0);
-    const sorted = features.slice().sort((a, b) => toScreenY(a.y) - toScreenY(b.y));
+    const sorted = features
+      .slice()
+      .sort((a, b) => toScreenY(a.y) - toScreenY(b.y));
     for (const f of sorted) {
       const sy = toScreenY(f.y);
       if (sy < -160 || sy > H + 160) continue;
@@ -1190,12 +1287,12 @@
     drawHud();
   }
 
-  function drawIdle() {
+  function drawIdle(): void {
     ctx.clearRect(0, 0, W, H);
     drawBackground();
   }
 
-  function loop(ts) {
+  function loop(ts: number): void {
     const dt = Math.min(0.05, (ts - lastTs) / 1000);
     lastTs = ts;
     update(dt);
@@ -1207,7 +1304,7 @@
 
   // --- Input ---------------------------------------------------------------
 
-  const trackedKeys = new Set([
+  const trackedKeys = new Set<TrackedKey>([
     "ArrowLeft",
     "ArrowRight",
     "ArrowUp",
@@ -1216,8 +1313,8 @@
     "Enter",
   ]);
 
-  function handleKey(e) {
-    if (!trackedKeys.has(e.key)) return;
+  function handleKey(e: KeyboardEvent): void {
+    if (!trackedKeys.has(e.key as TrackedKey)) return;
     if (
       !wrapEl.contains(document.activeElement) &&
       document.activeElement !== wrapEl
@@ -1229,21 +1326,23 @@
       if (state !== "playing") resetGame();
       return;
     }
-    keys[e.key] = true;
+    keys[e.key as TrackedKey] = true;
   }
 
-  function handleKeyUp(e) {
-    if (!trackedKeys.has(e.key)) return;
-    keys[e.key] = false;
+  function handleKeyUp(e: KeyboardEvent): void {
+    if (!trackedKeys.has(e.key as TrackedKey)) return;
+    keys[e.key as TrackedKey] = false;
   }
 
-  function setupCanvas() {
+  function setupCanvas(): void {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     canvas.style.width = "100%";
     canvas.style.height = "100%";
-    ctx = canvas.getContext("2d");
+    const c = canvas.getContext("2d");
+    if (!c) throw new Error("2D canvas context unavailable");
+    ctx = c;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
@@ -1269,7 +1368,12 @@
   />
 </svelte:head>
 
-<div class="ski" bind:this={wrapEl} tabindex="0" on:click={() => wrapEl.focus()}>
+<div
+  class="ski"
+  bind:this={wrapEl}
+  tabindex="0"
+  on:click={() => wrapEl.focus()}
+>
   <!-- TEMP: mixture knobs for tuning feature spawn ratios. Remove once
        the balance is dialed in. -->
   <div class="knobs" on:click|stopPropagation>

@@ -24,8 +24,10 @@
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "latest",
+    "@types/node": "^25.6.0",
     "npm-run-all": "^4.1.5",
     "svelte": "latest",
+    "typescript": "^6.0.3",
     "vite": "latest"
   }
 }

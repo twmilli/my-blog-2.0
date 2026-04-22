@@ -77,6 +77,11 @@
     themeStore.toggleMode();
   };
 
+  const onLightRiffChange = (e) => {
+    const v = Number(e.currentTarget.value);
+    themeStore.setLightRiff(v);
+  };
+
   const toggleContactMenu = () => {
     contactOpen = !contactOpen;
   };
@@ -146,6 +151,39 @@
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
     border-color: var(--border-strong);
+  }
+
+  .riff-select {
+    appearance: none;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.45rem 1.75rem 0.45rem 0.75rem;
+    max-width: 11.5rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23666' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    transition: border-color var(--dur-2) var(--ease-out-soft),
+      box-shadow var(--dur-2) var(--ease-out-soft),
+      color var(--dur-2) var(--ease-out-soft);
+  }
+
+  .riff-select:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+
+  .riff-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .caret {
@@ -330,6 +368,21 @@
         </div>
       {/if}
     </div>
+
+    {#if !currentThemeIsDark}
+      <label class="sr-only" for="nav-light-riff">Light theme palette</label>
+      <select
+        id="nav-light-riff"
+        class="riff-select"
+        value={String($themeStore.lightRiff ?? 1)}
+        on:change={onLightRiffChange}>
+        <option value="1">Canvas — clean white</option>
+        <option value="2">Fjord — cool mist</option>
+        <option value="3">Wheatfield — warm paper</option>
+        <option value="4">Tideline — mint wash</option>
+        <option value="5">High noon — cream & ember</option>
+      </select>
+    {/if}
 
     <button
       type="button"

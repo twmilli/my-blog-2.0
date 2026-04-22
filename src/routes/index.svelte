@@ -17,6 +17,47 @@
   $: featured = posts.slice(0, 4);
 </script>
 
+<svelte:head>
+  <title>Taylor Milliman</title>
+</svelte:head>
+
+<section class="hero rise-stagger">
+  <div class="tile tile-photo">
+    <img
+      src="backgammon.png"
+      alt="Taylor playing backgammon at sunset on a camping trip"
+    />
+    <div class="caption">
+      <p>
+        Taylor is a software builder, climber, and life-enjoyer based in San
+        Francisco.
+      </p>
+      <div class="caption-meta-block">
+        <span class="currently">Currently: AI @ Figma</span>
+        <div class="caption-right">
+          <ListeningStatus />
+          <CurrentLocation />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <Skiing />
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Writing</h2>
+    <a href="blog">All writing →</a>
+  </div>
+
+  <div class="grid rise-stagger">
+    {#each featured as post}
+      <PostItem {post} />
+    {/each}
+  </div>
+</section>
+
 <style>
   .hero {
     display: grid;
@@ -116,11 +157,10 @@
   }
 
   .caption-meta-block {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 1rem 1.25rem;
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 500;
@@ -129,14 +169,31 @@
 
   .currently {
     color: inherit;
+    justify-self: start;
+    text-align: left;
   }
 
   .caption-right {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    justify-self: end;
     gap: 0.5rem;
     text-align: right;
+  }
+
+  @media (max-width: 520px) {
+    .caption-meta-block {
+      grid-template-columns: 1fr;
+    }
+
+    .currently {
+      justify-self: start;
+    }
+
+    .caption-right {
+      justify-self: end;
+    }
   }
 
   /* Section */
@@ -179,41 +236,3 @@
     }
   }
 </style>
-
-<svelte:head>
-  <title>Taylor Milliman</title>
-</svelte:head>
-
-<section class="hero rise-stagger">
-  <div class="tile tile-photo">
-    <img src="backgammon.png" alt="Taylor playing backgammon at sunset on a camping trip" />
-    <div class="caption">
-      <p>
-        Taylor is a software builder, climber, and life-enjoyer
-        based in San Francisco.
-      </p>
-      <div class="caption-meta-block">
-        <span class="currently">Currently: AI @ Figma</span>
-        <div class="caption-right">
-          <ListeningStatus />
-          <CurrentLocation />
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <Skiing />
-</section>
-
-<section>
-  <div class="section-head">
-    <h2>Writing</h2>
-    <a href="blog">All writing →</a>
-  </div>
-
-  <div class="grid rise-stagger">
-    {#each featured as post}
-      <PostItem {post} />
-    {/each}
-  </div>
-</section>
